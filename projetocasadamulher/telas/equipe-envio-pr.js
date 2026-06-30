@@ -552,10 +552,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (meusResp.ok) {
                 const meus = await meusResp.json();
                 renderizarRascunhos(meus, myDraftsContainer, true);
+            } else {
+                const txt = await meusResp.text();
+                myDraftsContainer.innerHTML = `<div class="empty-state">Erro HTTP ${meusResp.status}: ${txt}</div>`;
             }
+
             if (compResp.ok) {
                 const comp = await compResp.json();
                 renderizarRascunhos(comp, sharedDraftsContainer, false);
+            } else {
+                const txt = await compResp.text();
+                sharedDraftsContainer.innerHTML = `<div class="empty-state">Erro HTTP ${compResp.status}: ${txt}</div>`;
             }
         } catch (e) {
             myDraftsContainer.innerHTML = `<div class="empty-state">Erro ao carregar: ${e.message}</div>`;
