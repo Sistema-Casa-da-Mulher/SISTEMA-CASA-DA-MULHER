@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
     
+    <!-- Adicionais de Busca (Commit 4) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.min.css">
+    
     <!-- Estilos -->
     <link rel="stylesheet" href="style.css?v=ide3">
     <link rel="stylesheet" href="equipe-ide.css?v=3">
@@ -26,9 +29,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js" defer></script>
     
+    <!-- CodeMirror Search Addons (Commit 4) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/searchcursor.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/search.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/jump-to-line.min.js" defer></script>
+
+    <!-- Iconify (Ícones Oficiais) -->
+    <script src="https://code.iconify.design/iconify-icon/3.0.2/iconify-icon.min.js" defer></script>
+
     <!-- Lógica IDE -->
-    <script src="equipe-ide-validacoes.js?v=1" defer></script>
-    <script src="equipe-ide.js?v=2" defer></script>
+    <script src="equipe-ide-validacoes.js?v=9" defer></script>
+    <script src="equipe-ide.js?v=9" defer></script>
 </head>
 <body class="ide-page-body">
     <main id="equipeIdePage" class="ide-app-shell" style="display: none;">
@@ -91,7 +103,7 @@
                 <button class="ide-activity-icon" id="btnTabBackend" title="Status da API (Backend)" aria-label="Backend">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
                 </button>
-                <button class="ide-activity-icon" title="Buscar" aria-label="Buscar">
+                <button class="ide-activity-icon" id="btnTabSearch" title="Buscar no Workspace" aria-label="Buscar">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </button>
                 <button class="ide-activity-icon" title="Controle de Versão (Em breve)" aria-label="Controle de Versão">
@@ -102,28 +114,38 @@
             <!-- SIDEBAR EXPLORER E MAPA -->
             <aside class="ide-sidebar">
                 
+                <!-- PAINEL DE BUSCA -->
+                <div id="panelSearch" class="ide-sidebar-panel hidden">
+                    <div class="ide-sidebar-header">Busca no Workspace</div>
+                    <div class="ide-sidebar-content" style="padding: 12px 8px;">
+                        <input type="text" id="ideSearchInput" class="ide-input" placeholder="Buscar texto (Enter)..." style="width: 100%; margin-bottom: 8px;">
+                        <div id="ideSearchResults" class="ide-file-tree">
+                            <div style="color:var(--ide-text-dimmed); font-size:12px; padding: 8px;">Digite algo para buscar em todos os arquivos.</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- PAINEL EXPLORADOR -->
                 <div id="panelExplorer" class="ide-sidebar-panel active">
                     <div class="ide-sidebar-header">Explorador</div>
                     <div class="ide-sidebar-content">
                     <div class="ide-accordion-section">
-                        <div class="ide-accordion-title">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                            ARQUIVOS DO RASCUNHO
+                        <div class="ide-accordion-title" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                RASCUNHO ATUAL
+                            </span>
+                            <div class="ide-explorer-actions" style="display: flex; gap: 4px;">
+                                <button id="btnIdeNewFile" title="Novo Arquivo" style="background:none; border:none; color:var(--ide-text); cursor:pointer; padding: 2px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                                </button>
+                                <button id="btnIdeNewFolder" title="Nova Pasta" style="background:none; border:none; color:var(--ide-text); cursor:pointer; padding: 2px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+                                </button>
+                            </div>
                         </div>
-                        <div id="ideFileList">
-                            <button class="ide-file-item active" data-file="index.html">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e34c26" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-                                index.html
-                            </button>
-                            <button class="ide-file-item" data-file="style.css">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#264de4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-                                style.css
-                            </button>
-                            <button class="ide-file-item" data-file="script.js">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f0db4f" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-                                script.js
-                            </button>
+                        <div id="ideFileList" class="ide-file-tree">
+                            <!-- Preenchido via JS dinamicamente -->
                         </div>
                     </div>
 
@@ -203,18 +225,7 @@
             <!-- MAIN EDITOR -->
             <section class="ide-main-editor">
                 <div class="ide-editor-tabs" id="ideEditorTabs">
-                    <button class="ide-tab active" data-file="index.html">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e34c26" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-                        index.html
-                    </button>
-                    <button class="ide-tab" data-file="style.css">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#264de4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-                        style.css
-                    </button>
-                    <button class="ide-tab" data-file="script.js">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f0db4f" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-                        script.js
-                    </button>
+                    <!-- Preenchido via JS dinamicamente (Commit 3) -->
                 </div>
                 
                 <div class="ide-editor-toolbar">

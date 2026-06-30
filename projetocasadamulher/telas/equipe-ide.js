@@ -569,10 +569,85 @@ console.log("Lista carregada");`
         }
     };
 
+
+function caminhoWorkspaceValido(caminho) {
+  if (typeof caminho !== "string") return false;
+  const valor = caminho.trim();
+  if (!valor) return false;
+  if (valor === ".") return false;
+  if (valor.includes("../")) return false;
+  if (valor.includes("..\\")) return false;
+  if (valor.startsWith("/")) return false;
+  if (valor.startsWith("\\")) return false;
+  if (/^[a-zA-Z]:\\/.test(valor)) return false;
+  return true;
+}
+
+function normalizarEstadoWorkspaceIde(rascunho) {
+  if (!rascunho) return rascunho;
+
+  rascunho.arquivos = rascunho.arquivos || {};
+  rascunho.arquivosBase = rascunho.arquivosBase || {};
+  rascunho.pastas = Array.isArray(rascunho.pastas) ? rascunho.pastas : [];
+  rascunho.abasAbertas = Array.isArray(rascunho.abasAbertas) ? rascunho.abasAbertas : [];
+
+  rascunho.arquivos = Object.fromEntries(
+    Object.entries(rascunho.arquivos).filter(([caminho]) => caminhoWorkspaceValido(caminho))
+  );
+
+  rascunho.arquivosBase = Object.fromEntries(
+    Object.entries(rascunho.arquivosBase).filter(([caminho]) => caminhoWorkspaceValido(caminho))
+  );
+
+  rascunho.pastas = rascunho.pastas.filter(caminhoWorkspaceValido);
+  rascunho.abasAbertas = rascunho.abasAbertas.filter((caminho) => caminhoWorkspaceValido(caminho) && rascunho.arquivos[caminho] !== undefined);
+
+  if (!caminhoWorkspaceValido(rascunho.arquivoAtivo) || rascunho.arquivos[rascunho.arquivoAtivo] === undefined) {
+    rascunho.arquivoAtivo = rascunho.abasAbertas[0] || Object.keys(rascunho.arquivos)[0] || null;
+  }
+
+  if (rascunho.arquivoAtivo && !rascunho.abasAbertas.includes(rascunho.arquivoAtivo)) {
+    rascunho.abasAbertas.unshift(rascunho.arquivoAtivo);
+  }
+
+  return rascunho;
+}
+
+function obterIconeArquivoIde(caminho, opcoes = {}) {
+  if (opcoes.pasta) {
+    return opcoes.aberta ? "vscode-icons:default-folder-opened" : "vscode-icons:default-folder";
+  }
+  const nome = String(caminho || "").split("/").pop().toLowerCase();
+  const ext = nome.includes(".") ? nome.split(".").pop() : "";
+
+  const porNome = {
+    "readme.md": "vscode-icons:file-type-readme",
+    "appsettings.json": "vscode-icons:file-type-config",
+    "appsettings.development.json": "vscode-icons:file-type-config"
+  };
+
+  const porExtensao = {
+    html: "vscode-icons:file-type-html",
+    css: "vscode-icons:file-type-css",
+    js: "vscode-icons:file-type-js",
+    json: "vscode-icons:file-type-json",
+    md: "vscode-icons:file-type-markdown",
+    txt: "vscode-icons:default-file",
+    cs: "vscode-icons:file-type-csharp",
+    cshtml: "vscode-icons:file-type-razor"
+  };
+
+  return porNome[nome] || porExtensao[ext] || "vscode-icons:default-file";
+}
+
     let rascunhoAtual = {
+        versaoWorkspace: 2,
         nome: 'Tela Soft UI',
         arquivos: { ...TEMPLATES['soft-ui'].arquivos },
+        arquivosBase: { ...TEMPLATES['soft-ui'].arquivos },
+        pastas: [],
         arquivoAtivo: 'index.html',
+        abasAbertas: ['index.html', 'style.css', 'script.js'],
         tarefa: TAREFA_PADRAO,
         areaProjeto: null
     };
@@ -663,28 +738,61 @@ console.log("Lista carregada");`
         if (salvoStr) {
             try {
                 let salvo = JSON.parse(salvoStr);
-                // Normaliza formato
-                if (!salvo.arquivos) salvo.arquivos = {};
-                salvo.arquivos['index.html'] = salvo.arquivos['index.html'] || salvo.arquivos['html'] || '';
-                salvo.arquivos['style.css'] = salvo.arquivos['style.css'] || salvo.arquivos['css'] || '';
-                salvo.arquivos['script.js'] = salvo.arquivos['script.js'] || salvo.arquivos['js'] || '';
+                // MIGRATION SCRIPT TO V2
+                if (salvo.versaoWorkspace !== 2) {
+                    console.log("Migrando rascunho antigo para Workspace V2...");
+                    const arquivosAntigos = salvo.arquivos || {};
+                    const html = arquivosAntigos['index.html'] || arquivosAntigos['html'] || '';
+                    const css = arquivosAntigos['style.css'] || arquivosAntigos['css'] || '';
+                    const js = arquivosAntigos['script.js'] || arquivosAntigos['js'] || '';
+                    
+                    const novosArquivos = {
+                        "index.html": html,
+                        "style.css": css,
+                        "script.js": js
+                    };
+                    
+                    salvo = {
+                        versaoWorkspace: 2,
+                        nome: salvo.nome || 'Rascunho Migrado',
+                        arquivos: novosArquivos,
+                        arquivosBase: JSON.parse(JSON.stringify(novosArquivos)), // Clone deep
+                        pastas: [],
+                        arquivoAtivo: salvo.arquivoAtivo || "index.html",
+                        abasAbertas: ["index.html", "style.css", "script.js"],
+                        tarefa: salvo.tarefa || TAREFA_PADRAO,
+                        areaProjeto: salvo.areaProjeto || null,
+                        atualizadoEm: salvo.atualizadoEm,
+                        githubModo: salvo.githubModo,
+                        githubToken: salvo.githubToken,
+                        githubOwner: salvo.githubOwner,
+                        githubRepo: salvo.githubRepo,
+                        githubBranch: salvo.githubBranch
+                    };
+                }
                 
-                // Prevenção contra rascunhos zumbis (onde index.html foi sobrescrito por css ou está vazio)
-                const isInvalid = !salvo.arquivos['index.html'].trim() || (!salvo.arquivos['index.html'].includes('<html') && salvo.arquivos['style.css'].trim());
+                // Prevenção contra rascunhos zumbis
+                const isInvalid = !salvo.arquivos || !salvo.arquivos['index.html'] || (!salvo.arquivos['index.html'].trim() && salvo.arquivos['style.css'].trim());
                 
                 if (isInvalid) {
                     console.warn("Rascunho antigo inválido ou corrompido, carregando vazio.");
                     localStorage.removeItem(DRAFT_KEY);
-                } else if (salvo && salvo.arquivos) {
+                } else {
                     rascunhoAtual = salvo;
+                    
+                    // Fallbacks extras
+                    if (!rascunhoAtual.arquivosBase) rascunhoAtual.arquivosBase = JSON.parse(JSON.stringify(rascunhoAtual.arquivos));
+                    if (!rascunhoAtual.pastas) rascunhoAtual.pastas = [];
+                    if (!rascunhoAtual.abasAbertas) rascunhoAtual.abasAbertas = ["index.html", "style.css", "script.js"];
                     if (!rascunhoAtual.arquivoAtivo) rascunhoAtual.arquivoAtivo = 'index.html';
                     if (!rascunhoAtual.tarefa) rascunhoAtual.tarefa = TAREFA_PADRAO;
-                    if (rascunhoAtual.areaProjeto === undefined) rascunhoAtual.areaProjeto = null;
                     
                     document.getElementById('ideCurrentFileName').textContent = rascunhoAtual.arquivoAtivo;
                     atualizarStatusTarefa();
                     marcarComoSalvo();
-                    console.log(`Rascunho restaurado. Atualizado em: ${salvo.atualizadoEm}`);
+                    console.log(`Rascunho restaurado V2. Atualizado em: ${salvo.atualizadoEm}`);
+                    renderizarArvoreArquivos();
+                renderizarAbas();
                 }
             } catch (e) {
                 console.error("Erro ao ler rascunho salvo.", e);
@@ -784,45 +892,246 @@ console.log("Lista carregada");`
         }, 800);
     }
 
+    // --- VFS: ARVORE DE ARQUIVOS ---
+    function validarCaminhoArquivo(path) {
+        if (!path) return { valido: false, erro: "O caminho não pode ser vazio." };
+        path = path.replace(/\\/g, '/');
+        if (path.includes('../') || path.startsWith('/') || path.match(/^[a-zA-Z]:\//) || path.includes('//')) {
+            return { valido: false, erro: "Caminho inválido. Evite barras duplas ou navegação para fora do diretório." };
+        }
+        
+        const partes = path.split('/');
+        const nomeArquivo = partes.pop();
+        if (nomeArquivo) {
+            const extPermitidas = ['.html', '.css', '.js', '.json', '.md', '.txt', '.cs', '.cshtml'];
+            const ext = nomeArquivo.substring(nomeArquivo.lastIndexOf('.')).toLowerCase();
+            if (!extPermitidas.includes(ext) || nomeArquivo.indexOf('.') === -1) {
+                return { valido: false, erro: `Extensão não permitida. Use: ${extPermitidas.join(', ')}` };
+            }
+        }
+        return { valido: true, pathNorm: path, partesPasta: partes };
+    }
+
+    
+
+    function renderizarArvoreArquivos() {
+        const container = document.getElementById('ideFileList');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        const arquivos = Object.keys(rascunhoAtual.arquivos || {}).sort();
+        const pastas = (rascunhoAtual.pastas || []).sort();
+        
+        pastas.forEach(pasta => {
+            const divPasta = document.createElement('div');
+            divPasta.style.padding = '4px 8px';
+            divPasta.style.color = 'var(--ide-text)';
+            divPasta.style.opacity = '0.8';
+            divPasta.style.display = 'flex';
+            divPasta.innerHTML = `<iconify-icon class="ide-file-icon" icon="${obterIconeArquivoIde(pasta, {pasta:true})}" aria-hidden="true" style="margin-right:6px; font-size:16px; transform:translateY(2px);"></iconify-icon> ${pasta}/`;
+            container.appendChild(divPasta);
+        });
+
+        arquivos.forEach(path => {
+            const btn = document.createElement('div');
+            btn.className = `ide-file-item ${rascunhoAtual.arquivoAtivo === path ? 'active' : ''}`;
+            btn.style.display = 'flex';
+            btn.style.justifyContent = 'space-between';
+            btn.style.alignItems = 'center';
+            btn.style.padding = '6px 8px';
+            
+            let color = '#ccc';
+            if (path.endsWith('.html')) color = '#e34c26';
+            else if (path.endsWith('.css')) color = '#264de4';
+            else if (path.endsWith('.js')) color = '#f0db4f';
+            else if (path.endsWith('.cs')) color = '#178600';
+            else if (path.endsWith('.json')) color = '#cb3837';
+            else if (path.endsWith('.md')) color = '#fff';
+            
+            const btnName = document.createElement('span');
+            btnName.style.display = 'flex';
+            btnName.style.alignItems = 'center';
+            btnName.style.gap = '6px';
+            btnName.style.cursor = 'pointer';
+            btnName.style.flex = '1';
+            btnName.style.overflow = 'hidden';
+            btnName.style.textOverflow = 'ellipsis';
+            btnName.style.whiteSpace = 'nowrap';
+            btnName.innerHTML = `<iconify-icon class="ide-file-icon" icon="${obterIconeArquivoIde(path)}" aria-hidden="true" style="font-size:16px; margin-right:4px; transform:translateY(2px);"></iconify-icon> <span style="overflow:hidden; text-overflow:ellipsis;">${path}</span>`;
+            btnName.onclick = () => abrirArquivo(path);
+            
+            const btnAcoes = document.createElement('div');
+            btnAcoes.style.display = 'flex';
+            btnAcoes.style.gap = '4px';
+            
+            const btnRenomear = document.createElement('button');
+            btnRenomear.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
+            btnRenomear.style = "background:none; border:none; color:var(--ide-text); cursor:pointer; opacity: 0.6; padding:0 4px; display:flex; align-items:center;";
+            btnRenomear.onclick = (e) => { e.stopPropagation(); renomearArquivoVFS(path); };
+            
+            const btnExcluir = document.createElement('button');
+            btnExcluir.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+            btnExcluir.style = "background:none; border:none; color:var(--ide-text); cursor:pointer; opacity: 0.6; padding:0 4px; display:flex; align-items:center;";
+            btnExcluir.onclick = (e) => { e.stopPropagation(); excluirArquivoVFS(path); };
+            
+            btnAcoes.appendChild(btnRenomear);
+            btnAcoes.appendChild(btnExcluir);
+            
+            btn.appendChild(btnName);
+            btn.appendChild(btnAcoes);
+            container.appendChild(btn);
+        });
+    }
+
+    function renomearArquivoVFS(oldPath) {
+        const newPathRaw = prompt("Novo nome do arquivo (ex: pasta/arquivo.js):", oldPath);
+        if (!newPathRaw || newPathRaw === oldPath) return;
+        
+        const val = validarCaminhoArquivo(newPathRaw);
+        if (!val.valido) return alert(val.erro);
+        const newPath = val.pathNorm;
+        
+        if (rascunhoAtual.arquivos[newPath] !== undefined) return alert("Arquivo já existe com este nome.");
+        
+        if (rascunhoAtual.arquivoAtivo === oldPath) {
+            rascunhoAtual.arquivos[oldPath] = getEditorValue();
+        }
+        
+        rascunhoAtual.arquivos[newPath] = rascunhoAtual.arquivos[oldPath];
+        delete rascunhoAtual.arquivos[oldPath];
+        
+        const abaIndex = rascunhoAtual.abasAbertas.indexOf(oldPath);
+        if (abaIndex !== -1) rascunhoAtual.abasAbertas[abaIndex] = newPath;
+        
+        if (rascunhoAtual.arquivoAtivo === oldPath) {
+            abrirArquivo(newPath);
+        } else {
+            renderizarArvoreArquivos();
+                renderizarAbas();
+            salvarRascunhoLocal();
+        }
+    }
+
+    function excluirArquivoVFS(path) {
+        if (!confirm(`Deseja excluir o arquivo '${path}'?`)) return;
+        
+        delete rascunhoAtual.arquivos[path];
+        
+        fecharAba(path, true); // true indica que estamos excluindo
+    }
+
+    function renderizarAbas() {
+        const container = document.getElementById('ideEditorTabs');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        if (!rascunhoAtual.abasAbertas) rascunhoAtual.abasAbertas = [];
+        
+        rascunhoAtual.abasAbertas.forEach(path => {
+            const btn = document.createElement('div');
+            btn.className = `ide-tab ${rascunhoAtual.arquivoAtivo === path ? 'active' : ''}`;
+            btn.style.display = 'flex';
+            btn.style.alignItems = 'center';
+            btn.style.gap = '6px';
+            btn.title = path;
+            
+            let color = '#ccc';
+            if (path.endsWith('.html')) color = '#e34c26';
+            else if (path.endsWith('.css')) color = '#264de4';
+            else if (path.endsWith('.js')) color = '#f0db4f';
+            else if (path.endsWith('.cs')) color = '#178600';
+            else if (path.endsWith('.json')) color = '#cb3837';
+            else if (path.endsWith('.md')) color = '#fff';
+            
+            const btnName = document.createElement('span');
+            btnName.style.cursor = 'pointer';
+            btnName.style.display = 'flex';
+            btnName.style.alignItems = 'center';
+            btnName.style.gap = '6px';
+            btnName.innerHTML = `<iconify-icon class="ide-file-icon" icon="${obterIconeArquivoIde(path)}" aria-hidden="true" style="font-size:16px; margin-right:4px; transform:translateY(2px);"></iconify-icon> <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 150px;">${path}</span>`;
+            btnName.onclick = () => abrirArquivo(path);
+            
+            const btnClose = document.createElement('button');
+            btnClose.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+            btnClose.style = "background:none; border:none; color:inherit; cursor:pointer; padding:2px; margin-left:4px; opacity: 0.6; display: flex; align-items: center; justify-content: center;";
+            btnClose.onclick = (e) => {
+                e.stopPropagation();
+                fecharAba(path, false);
+            };
+            
+            btn.appendChild(btnName);
+            btn.appendChild(btnClose);
+            container.appendChild(btn);
+        });
+    }
+
+    function fecharAba(path, isExcluindo = false) {
+        if (!rascunhoAtual.abasAbertas) rascunhoAtual.abasAbertas = [];
+        const abaIndex = rascunhoAtual.abasAbertas.indexOf(path);
+        
+        if (abaIndex !== -1) {
+            rascunhoAtual.abasAbertas.splice(abaIndex, 1);
+        }
+        
+        if (rascunhoAtual.arquivoAtivo === path || isExcluindo) {
+            const novaAba = rascunhoAtual.abasAbertas[Math.min(abaIndex, rascunhoAtual.abasAbertas.length - 1)];
+            if (novaAba) {
+                abrirArquivo(novaAba);
+            } else {
+                rascunhoAtual.arquivoAtivo = null;
+                setEditorValue('');
+                lblCurrentFile.textContent = 'Sem arquivo';
+                if (statusBarFile) statusBarFile.textContent = 'Sem arquivo';
+                if (statusBarLang) statusBarLang.textContent = '-';
+                renderizarArvoreArquivos();
+                renderizarAbas();
+                salvarRascunhoLocal();
+            }
+        } else {
+            renderizarAbas();
+            salvarRascunhoLocal();
+        }
+    }
+
     // 9. Alternar abas de arquivo
     function abrirArquivo(filename) {
-        // Salva arquivo antigo
-        rascunhoAtual.arquivos[rascunhoAtual.arquivoAtivo] = getEditorValue();
+        if (rascunhoAtual.arquivoAtivo && rascunhoAtual.arquivos[rascunhoAtual.arquivoAtivo] !== undefined) {
+            rascunhoAtual.arquivos[rascunhoAtual.arquivoAtivo] = getEditorValue();
+        }
         
-        // Define novo arquivo
+        if (rascunhoAtual.arquivos[filename] === undefined) {
+            if (filename === 'index.html') rascunhoAtual.arquivos[filename] = '';
+            else return;
+        }
+        
+        if (!rascunhoAtual.abasAbertas) rascunhoAtual.abasAbertas = [];
+        if (!rascunhoAtual.abasAbertas.includes(filename)) {
+            rascunhoAtual.abasAbertas.push(filename);
+        }
+        
         rascunhoAtual.arquivoAtivo = filename;
         lblCurrentFile.textContent = filename;
         if (statusBarFile) statusBarFile.textContent = filename;
         if (statusBarLang) {
             if (filename.endsWith('.js')) statusBarLang.textContent = 'JavaScript';
             else if (filename.endsWith('.css')) statusBarLang.textContent = 'CSS';
+            else if (filename.endsWith('.cs')) statusBarLang.textContent = 'C#';
+            else if (filename.endsWith('.json')) statusBarLang.textContent = 'JSON';
             else statusBarLang.textContent = 'HTML';
         }
         
-        // Carrega conteúdo
         setEditorValue(rascunhoAtual.arquivos[filename] || '');
         updateEditorMode(filename);
         
-        // Atualiza UI dos botões
-        fileButtons.forEach(btn => {
-            if (btn.getAttribute('data-file') === filename) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-        
-        // Refresh CM para recalcular altura após troca de layout ou aba
+        renderizarArvoreArquivos();
+                renderizarAbas();
         setTimeout(() => { if (editorInstance) editorInstance.refresh(); }, 50);
+        salvarRascunhoLocal();
     }
 
     // 10. Ações da Toolbar/Sidebar
-    fileButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const file = e.currentTarget.getAttribute('data-file');
-            abrirArquivo(file);
-        });
-    });
+    // Substituído por renderizarArvoreArquivos e renderizarAbas
 
     templateButtons.forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -850,10 +1159,8 @@ console.log("Lista carregada");`
                 setEditorValue(rascunhoAtual.arquivos['index.html']);
                 updateEditorMode('index.html');
                 
-                fileButtons.forEach(btn => {
-                    if (btn.getAttribute('data-file') === 'index.html') btn.classList.add('active');
-                    else btn.classList.remove('active');
-                });
+                renderizarArvoreArquivos();
+                renderizarAbas();
                 
                 setTimeout(() => { if (editorInstance) editorInstance.refresh(); }, 50);
 
@@ -863,6 +1170,15 @@ console.log("Lista carregada");`
             }
         });
     });
+
+    const btnIdeSearch = document.getElementById('btnIdeSearch');
+    if (btnIdeSearch) {
+        btnIdeSearch.addEventListener('click', () => {
+            if (editorInstance) {
+                editorInstance.execCommand("find");
+            }
+        });
+    }
 
     // Renderizar Tarefas Guiadas no Menu Lateral
     function renderizarTarefasGuiadas() {
@@ -909,10 +1225,8 @@ console.log("Lista carregada");`
         setEditorValue(rascunhoAtual.arquivos['index.html']);
         updateEditorMode('index.html');
         
-        fileButtons.forEach(b => {
-            if (b.getAttribute('data-file') === 'index.html') b.classList.add('active');
-            else b.classList.remove('active');
-        });
+        renderizarArvoreArquivos();
+                renderizarAbas();
         
         setTimeout(() => { if (editorInstance) editorInstance.refresh(); }, 50);
 
@@ -1154,6 +1468,47 @@ console.log("Lista carregada");`
     btnSave.addEventListener('click', () => {
         salvarRascunhoLocal();
     });
+    
+    const btnNewFile = document.getElementById('btnIdeNewFile');
+    if (btnNewFile) {
+        btnNewFile.addEventListener('click', () => {
+            const pathRaw = prompt("Caminho do novo arquivo (ex: js/app.js ou login.html):");
+            if (!pathRaw) return;
+            const val = validarCaminhoArquivo(pathRaw);
+            if (!val.valido) return alert(val.erro);
+            const path = val.pathNorm;
+            if (rascunhoAtual.arquivos[path] !== undefined) return alert("Arquivo já existe!");
+            
+            if (rascunhoAtual.arquivoAtivo) {
+                rascunhoAtual.arquivos[rascunhoAtual.arquivoAtivo] = getEditorValue();
+            }
+            
+            rascunhoAtual.arquivos[path] = '';
+            if (!rascunhoAtual.abasAbertas.includes(path)) {
+                rascunhoAtual.abasAbertas.push(path);
+            }
+            abrirArquivo(path);
+        });
+    }
+    
+    const btnNewFolder = document.getElementById('btnIdeNewFolder');
+    if (btnNewFolder) {
+        btnNewFolder.addEventListener('click', () => {
+            let pathRaw = prompt("Nome da nova pasta:");
+            if (!pathRaw) return;
+            pathRaw = pathRaw.replace(/\\/g, '/');
+            if (pathRaw.includes('../') || pathRaw.startsWith('/') || pathRaw.match(/^[a-zA-Z]:\//) || pathRaw.includes('//')) {
+                return alert("Caminho de pasta inválido.");
+            }
+            if (pathRaw.endsWith('/')) pathRaw = pathRaw.slice(0, -1);
+            if (rascunhoAtual.pastas.includes(pathRaw)) return alert("Pasta já existe!");
+            
+            rascunhoAtual.pastas.push(pathRaw);
+            renderizarArvoreArquivos();
+                renderizarAbas();
+            salvarRascunhoLocal();
+        });
+    }
 
     document.getElementById('btnIdeUpdatePreview').addEventListener('click', () => {
         atualizarPreview();
@@ -1181,10 +1536,8 @@ console.log("Lista carregada");`
             setEditorValue('');
             updateEditorMode('index.html');
             
-            fileButtons.forEach(btn => {
-                if (btn.getAttribute('data-file') === 'index.html') btn.classList.add('active');
-                else btn.classList.remove('active');
-            });
+            renderizarArvoreArquivos();
+                renderizarAbas();
             
             setTimeout(() => { if (editorInstance) editorInstance.refresh(); }, 50);
 
@@ -1216,10 +1569,8 @@ console.log("Lista carregada");`
             setEditorValue(rascunhoAtual.arquivos['index.html']);
             updateEditorMode('index.html');
             
-            fileButtons.forEach(btn => {
-                if (btn.getAttribute('data-file') === 'index.html') btn.classList.add('active');
-                else btn.classList.remove('active');
-            });
+            renderizarArvoreArquivos();
+                renderizarAbas();
             
             setTimeout(() => { if (editorInstance) editorInstance.refresh(); }, 50);
 
