@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enviar alteração pronta para PR - Casa da Mulher</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="equipe-envio-pr.css">
+    <script src="config.js" defer></script>
+    <script src="auth.js" defer></script>
+    <script src="app.js" defer></script>
+    <script src="equipe-envio-pr.js" defer></script>
+</head>
+<body>
+    <main class="envio-container">
+        
+        <header class="envio-header">
+            <div class="envio-header-title">
+                <img src="IMAGENS/logo_oficial.png" alt="Logo Casa da Mulher">
+                <div>
+                    <h1>Enviar alteração pronta para PR</h1>
+                    <p>Envie arquivos trabalhados no VS Code, Codespaces ou outro ambiente e gere um Pull Request automaticamente.</p>
+                </div>
+            </div>
+            <a class="btn btn-secondary" href="equipe-painel.html">Voltar ao painel</a>
+        </header>
+
+        <div class="envio-grid">
+            
+            <!-- Coluna Esquerda: Orientação -->
+            <aside>
+                <div class="envio-card">
+                    <h2>Como usar</h2>
+                    <div class="orientation-block">
+                        <strong>1. Baixe ou use seu fork</strong>
+                        <p>Baixe a base do projeto ou trabalhe diretamente pelo Codespaces.</p>
+                    </div>
+                    <div class="orientation-block">
+                        <strong>2. Envie sua alteração</strong>
+                        <p>Arraste o ZIP/pasta ou informe a branch usada no GitHub.</p>
+                    </div>
+                    <div class="orientation-block">
+                        <strong>3. Revise antes do PR</strong>
+                        <p>O sistema compara com a main e cria PR apenas com arquivos alterados.</p>
+                    </div>
+                    
+                    <div class="card-actions">
+                        <a href="#" id="btnDownloadBase" class="btn btn-secondary" style="width: 100%; height: 40px;">Baixar projeto base</a>
+                    </div>
+                </div>
+
+                <div class="envio-card">
+                    <h2>Regras de segurança</h2>
+                    <ul class="security-rules">
+                        <li>Arquivos idênticos são ignorados.</li>
+                        <li>Arquivos sensíveis são bloqueados.</li>
+                        <li>Alterações fora de protótipos geram alerta.</li>
+                        <li>Nada é enviado sem sua confirmação.</li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Coluna Direita: Fluxo -->
+            <section>
+                <div class="envio-card" id="mainFlowCard">
+                    
+                    <!-- Stepper -->
+                    <div class="stepper">
+                        <div class="step active" id="step1">
+                            <div class="step-num">1</div>
+                            <span>Origem</span>
+                        </div>
+                        <div class="step" id="step2">
+                            <div class="step-num">2</div>
+                            <span>Análise</span>
+                        </div>
+                        <div class="step" id="step3">
+                            <div class="step-num">3</div>
+                            <span>Revisão</span>
+                        </div>
+                        <div class="step" id="step4">
+                            <div class="step-num">4</div>
+                            <span>Pull Request</span>
+                        </div>
+                    </div>
+
+                    <div id="viewOrigem">
+                        <div class="segmented-control">
+                            <div class="segment active" data-target="upload-mode">
+                                <div class="segment-title">📦 Enviar arquivos</div>
+                                <div class="segment-desc">ZIP, pasta ou arquivos do VS Code</div>
+                            </div>
+                            <div class="segment" data-target="branch-mode">
+                                <div class="segment-title">🌿 Enviar branch</div>
+                                <div class="segment-desc">Fork/branch do Codespaces</div>
+                            </div>
+                            <div class="segment" data-target="storage-mode">
+                                <div class="segment-title">💾 Rascunhos da Equipe</div>
+                                <div class="segment-desc">Salvar e compartilhar</div>
+                            </div>
+                        </div>
+
+                        <!-- Upload Mode -->
+                        <div id="upload-mode" class="tab-content active">
+                            <div class="dropzone" id="dropZone">
+                                <div class="dropzone-icon">📁</div>
+                                <div class="dropzone-title">Arraste seu ZIP, pasta ou arquivos aqui</div>
+                                <div class="dropzone-desc">Recomendado: envie um ZIP gerado a partir da base do projeto.</div>
+                                <button type="button" class="btn btn-secondary">Selecionar arquivo</button>
+                                <input type="file" id="fileInput" accept=".zip" style="display: none;">
+                            </div>
+                            
+                            <div class="file-selected-card" id="fileSelectedCard" style="display: none;">
+                                <div class="file-selected-info">
+                                    <strong id="fileNameDisplay">nome-do-arquivo.zip</strong>
+                                    <span id="fileSizeDisplay">Tamanho: 0 MB</span>
+                                </div>
+                                <button type="button" class="btn btn-secondary" style="height: 36px; padding: 0 16px;" id="btnRemoveFile">Remover</button>
+                            </div>
+                        </div>
+
+                        <!-- Branch Mode -->
+                        <div id="branch-mode" class="tab-content">
+                            <div class="form-group">
+                                <label for="branchRepoUrl">URL do repositório ou fork</label>
+                                <input type="url" id="branchRepoUrl" class="form-control" placeholder="https://github.com/usuario/SISTEMA-CASA-DA-MULHER">
+                                <div class="example-box">
+                                    Exemplo:<br>
+                                    Repo: https://github.com/AKiTagawa230/SISTEMA-CASA-DA-MULHER
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="branchName">Nome da branch</label>
+                                <input type="text" id="branchName" class="form-control" placeholder="prototipo/chat-realtime">
+                                <div class="form-help">Use esta opção se você trabalhou no Codespaces ou já subiu sua branch para o GitHub.</div>
+                            </div>
+                        </div>
+
+                        <div id="storage-mode" class="tab-content">
+                            <!-- Meus Rascunhos -->
+                            <div class="storage-section" id="storageList">
+                                <h3>Meus Rascunhos</h3>
+                                <div class="storage-cards-container" id="myDraftsContainer">
+                                    <div class="empty-state">Carregando rascunhos...</div>
+                                </div>
+                                
+                                <h3 style="margin-top:20px;">Rascunhos Compartilhados</h3>
+                                <div class="storage-cards-container" id="sharedDraftsContainer">
+                                    <div class="empty-state">Carregando rascunhos...</div>
+                                </div>
+
+                                <button type="button" class="btn btn-secondary" style="margin-top: 15px;" id="btnNovoRascunho">Salvar Novo Rascunho</button>
+                            </div>
+
+                            <!-- Salvar Novo Rascunho Form -->
+                            <div class="storage-section" id="storageForm" style="display: none;">
+                                <h3>Salvar Novo Rascunho</h3>
+                                
+                                <div class="form-group">
+                                    <label>Título do Rascunho *</label>
+                                    <input type="text" id="draftTitle" class="form-control" placeholder="Ex: Nova tela de chat" maxlength="100">
+                                </div>
+                                <div class="form-group">
+                                    <label>Descrição</label>
+                                    <textarea id="draftDesc" class="form-control" rows="2" placeholder="Opcional. Resumo do que foi feito..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Tipo</label>
+                                    <select id="draftType" class="form-control">
+                                        <option value="Protótipo">Protótipo</option>
+                                        <option value="Frontend">Frontend</option>
+                                        <option value="Backend/API">Backend/API</option>
+                                        <option value="Full-stack">Full-stack</option>
+                                        <option value="Documentação">Documentação</option>
+                                        <option value="Outro">Outro</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" id="draftShared" style="width:16px; height:16px;">
+                                    <label for="draftShared" style="margin-bottom:0;">Compartilhar com a equipe</label>
+                                </div>
+                                
+                                <div class="dropzone" id="draftDropzone">
+                                    <div class="dropzone-content">
+                                        <div class="dropzone-icon">📁</div>
+                                        <div class="dropzone-text">Arraste seu arquivo ZIP aqui para rascunho</div>
+                                        <div class="dropzone-sub">ou</div>
+                                        <button type="button" class="btn btn-secondary" id="btnSelectDraftZip">Selecionar ZIP</button>
+                                        <input type="file" id="draftFileInput" style="display: none" accept=".zip">
+                                    </div>
+                                    <div id="draftSelectedFileContainer" class="selected-file" style="display: none; justify-content: space-between; align-items: center;">
+                                        <div class="file-info">
+                                            <span class="file-name" id="draftFileNameDisplay"></span>
+                                            <span class="file-size" id="draftFileSizeDisplay"></span>
+                                        </div>
+                                        <button type="button" class="btn btn-secondary" style="height: 36px; padding: 0 16px;" id="btnRemoveDraftFile">Remover</button>
+                                    </div>
+                                </div>
+
+                                <div class="actions-footer" style="margin-top: 15px;">
+                                    <button type="button" class="btn btn-primary" id="btnSalvarStorage">Salvar no Storage</button>
+                                    <button type="button" class="btn btn-secondary" id="btnCancelarStorage">Cancelar</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="actions-footer" id="mainActionsFooter">
+                            <button type="button" class="btn btn-primary" id="btnAnalisar">Analisar alteração</button>
+                            <button type="button" class="btn btn-secondary" id="btnLimpar">Limpar</button>
+                        </div>
+                    </div>
+
+                    <div id="viewAnalise" style="display: none;">
+                        <h2 style="font-size: 20px;">Resumo da análise</h2>
+                        
+                        <div class="analysis-summary-grid">
+                            <div class="analysis-stat stat-novo">
+                                <div class="analysis-stat-val" id="valNovos">0</div>
+                                <div class="analysis-stat-label">Novos</div>
+                            </div>
+                            <div class="analysis-stat stat-mod">
+                                <div class="analysis-stat-val" id="valMod">0</div>
+                                <div class="analysis-stat-label">Modificados</div>
+                            </div>
+                            <div class="analysis-stat stat-rem">
+                                <div class="analysis-stat-val" id="valRem">0</div>
+                                <div class="analysis-stat-label">Removidos</div>
+                            </div>
+                            <div class="analysis-stat stat-ign">
+                                <div class="analysis-stat-val" id="valIgn">0</div>
+                                <div class="analysis-stat-label">Ignorados</div>
+                            </div>
+                            <div class="analysis-stat stat-blk">
+                                <div class="analysis-stat-val" id="valBlk">0</div>
+                                <div class="analysis-stat-label">Bloqueados</div>
+                            </div>
+                            <div class="analysis-stat stat-out">
+                                <div class="analysis-stat-val" id="valFora">0</div>
+                                <div class="analysis-stat-label">Fora de protótipos</div>
+                            </div>
+                        </div>
+
+                        <div id="fileGroupPrototipo" class="file-group" style="display:none;">
+                            <h4>Arquivos em protótipos</h4>
+                            <div id="listPrototipo"></div>
+                        </div>
+
+                        <div id="fileGroupFora" class="file-group" style="display:none;">
+                            <h4 style="color: var(--cm-warning);">Arquivos fora de protótipos</h4>
+                            <div id="listFora"></div>
+                            <div class="form-help" style="color: var(--cm-warning); margin-top: 8px;">
+                                Esta alteração mexe fora da área de protótipos. O PR será criado, mas exigirá revisão extra antes do merge.
+                            </div>
+                        </div>
+
+                        <div id="fileGroupBlk" class="file-group" style="display:none;">
+                            <h4 style="color: var(--cm-danger);">Arquivos bloqueados</h4>
+                            <div id="listBlk"></div>
+                            <div class="form-help" style="color: var(--cm-danger); margin-top: 8px;">
+                                Existem arquivos bloqueados. Remova-os antes de criar o PR.
+                            </div>
+                        </div>
+
+                        <hr style="border:0; border-top:1px solid var(--cm-border); margin: 32px 0;">
+
+                        <h2>Detalhes do Pull Request</h2>
+                        <div class="form-group">
+                            <label for="prTitulo">Título do PR</label>
+                            <input type="text" id="prTitulo" class="form-control" placeholder="Protótipo do chat realtime" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="prDescricao">Descrição</label>
+                            <textarea id="prDescricao" class="form-control" rows="3" placeholder="Explique o que foi alterado, como testar e se há algo que merece atenção."></textarea>
+                        </div>
+
+                        <hr style="border:0; border-top:1px solid var(--cm-border); margin: 32px 0;">
+
+                        <h2>Antes de enviar</h2>
+                        <div class="checklist">
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="chkRevisado">
+                                <span>Revisei os arquivos antes de enviar.</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="chkSegredos">
+                                <span>Não estou enviando senhas, tokens, chaves ou dados reais.</span>
+                            </label>
+                            <label class="checkbox-item checkbox-danger" id="boxForaPrototipo">
+                                <input type="checkbox" id="chkForaPrototipo">
+                                <span>Entendo que arquivos fora de protótipos exigem revisão extra.</span>
+                            </label>
+                        </div>
+
+                        <div class="actions-footer">
+                            <button type="button" class="btn btn-primary" id="btnCriarPr">Criar Pull Request</button>
+                            <button type="button" class="btn btn-secondary" id="btnVoltarAnalise">Analisar novamente</button>
+                        </div>
+                    </div>
+
+                    <div id="viewLoading" style="display: none; text-align: center; padding: 48px 0;">
+                        <div style="font-size: 32px; margin-bottom: 16px;">⏳</div>
+                        <h3 id="loadingText" style="color: var(--cm-primary-dark);">Analisando arquivos e comparando com a main...</h3>
+                    </div>
+
+                    <div id="viewSuccess" style="display: none;" class="success-card">
+                        <div class="success-icon">🎉</div>
+                        <h2>Pull Request criado com sucesso</h2>
+                        <p id="successMessage" style="color: var(--cm-muted); margin-bottom: 32px;">Seu código já está disponível para revisão.</p>
+                        
+                        <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+                            <a href="#" id="linkPr" target="_blank" class="btn btn-primary">Abrir Pull Request</a>
+                            <button type="button" class="btn btn-secondary" id="btnNovoEnvio">Enviar outra alteração</button>
+                            <a href="equipe-painel.html" class="btn btn-secondary">Voltar ao painel</a>
+                        </div>
+                    </div>
+
+                    <div id="viewError" style="display: none; text-align: center; padding: 48px 24px; background: #fff5f5; border: 1px solid var(--cm-danger); border-radius: 12px;">
+                        <div style="font-size: 32px; margin-bottom: 16px;">❌</div>
+                        <h3 style="color: var(--cm-danger); margin-top: 0;">Ocorreu um erro</h3>
+                        <p id="errorText" style="margin-bottom: 24px;"></p>
+                        <button type="button" class="btn btn-secondary" id="btnTentarNovamente">Tentar novamente</button>
+                    </div>
+
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

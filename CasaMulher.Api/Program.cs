@@ -251,11 +251,13 @@ builder.Services.Configure<CasaMulher.Api.Models.GitHubIdeSettings>(builder.Conf
 builder.Services.AddScoped<CasaMulher.Api.Services.IGitHubIdeService, CasaMulher.Api.Services.ManualTokenGitHubIdeService>();
 builder.Services.AddScoped<CasaMulher.Api.Services.IGitHubUsuarioService, CasaMulher.Api.Services.GitHubUsuarioService>();
 builder.Services.AddScoped<CasaMulher.Api.Services.IGitHubForkIdeService, CasaMulher.Api.Services.GitHubForkIdeService>();
+builder.Services.AddScoped<CasaMulher.Api.Services.IEquipeEnvioPrService, CasaMulher.Api.Services.EquipeEnvioPrService>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IConviteCodigoService, ConviteCodigoService>();
 builder.Services.AddScoped<IFuncionarioIdentificadorService, GeradorIdentificadorFuncionarioService>();
 builder.Services.AddScoped<IMasterUserService, MasterUserService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
+builder.Services.AddScoped<IEquipeStorageService, EquipeStorageService>();
 builder.Services.AddScoped<IRedefinicaoSenhaEmailService, RedefinicaoSenhaEmailService>();
 builder.Services.AddScoped<IEmailRecuperacaoEmailService, EmailRecuperacaoEmailService>();
 builder.Services.AddSingleton<IRedefinicaoSenhaThrottleService, InMemoryRedefinicaoSenhaThrottleService>();
