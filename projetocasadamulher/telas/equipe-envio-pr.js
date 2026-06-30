@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fileSelectedCard.style.display = 'none';
     });
 
-    // --- BotÃ£o Limpar ---
+    // --- Botão Limpar ---
     btnLimpar.addEventListener('click', () => {
         btnRemoveFile.click();
         document.getElementById('branchRepoUrl').value = '';
@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (!response.ok) {
                     const text = await response.text();
-                    if (!text) throw new Error(`Erro HTTP ${response.status} (Sem detalhes. Verifique se a branch existe ou se vocÃª tem permissÃ£o).`);
+                    if (!text) throw new Error(`Erro HTTP ${response.status} (Sem detalhes. Verifique se a branch existe ou se você tem permissão).`);
                     try {
                         const json = JSON.parse(text);
                         throw new Error(json.mensagem || json.title || text);
@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const repoUrl = document.getElementById('branchRepoUrl').value;
                 const branchName = document.getElementById('branchName').value;
-                if (!repoUrl || !branchName) throw new Error("Preencha a URL do repositÃ³rio e o nome da branch.");
+                if (!repoUrl || !branchName) throw new Error("Preencha a URL do repositório e o nome da branch.");
 
                 const response = await CasaMulherAuth.apiFetch('/api/equipe-pr/analisar-branch', {
                     method: 'POST',
@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (!response.ok) {
                     const text = await response.text();
-                    if (!text) throw new Error(`Erro HTTP ${response.status} (Sem detalhes. Verifique se a branch existe ou se vocÃª tem permissÃ£o).`);
+                    if (!text) throw new Error(`Erro HTTP ${response.status} (Sem detalhes. Verifique se a branch existe ou se você tem permissão).`);
                     try {
                         const json = JSON.parse(text);
                         throw new Error(json.mensagem || json.title || text);
@@ -242,12 +242,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             renderAnalysis(result);
         } catch (error) {
-            showError(error.message || 'Erro desconhecido de conexÃ£o (CORS ou Servidor fora do ar).');
+            showError(error.message || 'Erro desconhecido de conexão (CORS ou Servidor fora do ar).');
         }
     });
 
     function renderAnalysis(result) {
-        setStep(3); // RevisÃ£o
+        setStep(3); // Revisão
         
         // Atualiza Cards de Stats
         document.getElementById('valNovos').textContent = result.totalNovos;
@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
         grpFora.style.display = countFora > 0 ? 'block' : 'none';
         grpBlk.style.display = countBlk > 0 ? 'block' : 'none';
 
-        // LÃ³gica de Checklist e Bloqueio
+        // Lógica de Checklist e Bloqueio
         const boxFora = document.getElementById('boxForaPrototipo');
         const chkFora = document.getElementById('chkForaPrototipo');
 
@@ -327,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (countBlk > 0 || (!result.validoParaEnvio && countBlk === 0)) {
             btnCriarPr.disabled = true;
-            btnCriarPr.title = 'Existem bloqueios ou nÃ£o hÃ¡ alteraÃ§Ãµes vÃ¡lidas';
+            btnCriarPr.title = 'Existem bloqueios ou não há alterações válidas';
         } else {
             btnCriarPr.disabled = false;
             btnCriarPr.title = '';
@@ -345,13 +345,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const chkFora = document.getElementById('chkForaPrototipo').checked;
 
         if (!titulo || !chkRevisado || !chkSegredos) {
-            alert('Preencha o tÃ­tulo e marque os itens obrigatÃ³rios da revisÃ£o.');
+            alert('Preencha o título e marque os itens obrigatórios da revisão.');
             return;
         }
 
         const boxFora = document.getElementById('boxForaPrototipo');
         if (boxFora.style.display === 'flex' && !chkFora) {
-            alert('VocÃª precisa confirmar a caixa extra sobre arquivos fora de protÃ³tipos.');
+            alert('Você precisa confirmar a caixa extra sobre arquivos fora de protótipos.');
             return;
         }
 
@@ -374,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (!response.ok) {
                     const text = await response.text();
-                    if (!text) throw new Error(`Erro HTTP ${response.status} (Sem detalhes. Verifique se a branch existe ou se vocÃª tem permissÃ£o).`);
+                    if (!text) throw new Error(`Erro HTTP ${response.status} (Sem detalhes. Verifique se a branch existe ou se você tem permissão).`);
                     try {
                         const json = JSON.parse(text);
                         throw new Error(json.mensagem || json.title || text);
@@ -402,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (!response.ok) {
                     const text = await response.text();
-                    if (!text) throw new Error(`Erro HTTP ${response.status} (Sem detalhes. Verifique se a branch existe ou se vocÃª tem permissÃ£o).`);
+                    if (!text) throw new Error(`Erro HTTP ${response.status} (Sem detalhes. Verifique se a branch existe ou se você tem permissão).`);
                     try {
                         const json = JSON.parse(text);
                         throw new Error(json.mensagem || json.title || text);
@@ -426,7 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- LÃ“GICA DO STORAGE ---
+    // --- LÓGICA DO STORAGE ---
     btnNovoRascunho?.addEventListener('click', () => {
         storageList.style.display = 'none';
         storageForm.style.display = 'block';
@@ -437,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
         storageList.style.display = 'block';
         document.getElementById('draftTitle').value = '';
         document.getElementById('draftDesc').value = '';
-        document.getElementById('draftType').value = 'ProtÃ³tipo';
+        document.getElementById('draftType').value = 'Protótipo';
         document.getElementById('draftShared').checked = false;
         draftSelectedFile = null;
         updateDraftFileDisplay();
@@ -498,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnSalvarStorage?.addEventListener('click', async () => {
         const title = document.getElementById('draftTitle').value.trim();
-        if (!title) return alert('O tÃ­tulo Ã© obrigatÃ³rio.');
+        if (!title) return alert('O título é obrigatório.');
         if (!draftSelectedFile) return alert('Selecione um arquivo ZIP para salvar.');
 
         const formData = new FormData();
@@ -581,7 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const sizeMb = (r.tamanhoTotalBytes / (1024 * 1024)).toFixed(2);
             let badges = `<span style="background: #eef2ff; color: #4f46e5; padding: 2px 6px; border-radius: 4px; font-size: 11px;">${r.tipo}</span>`;
             if (r.compartilhadoEquipe) badges += ` <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 11px;">Compartilhado</span>`;
-            if (r.temArquivosForaPrototipos) badges += ` <span style="background: #fef08a; color: #854d0e; padding: 2px 6px; border-radius: 4px; font-size: 11px;">Fora de ProtÃ³tipos</span>`;
+            if (r.temArquivosForaPrototipos) badges += ` <span style="background: #fef08a; color: #854d0e; padding: 2px 6px; border-radius: 4px; font-size: 11px;">Fora de Protótipos</span>`;
             
             return `
                 <div class="draft-card" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 10px; background: white;">
