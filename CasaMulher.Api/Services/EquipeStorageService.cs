@@ -253,10 +253,10 @@ namespace CasaMulher.Api.Services
                     catch { /* ignora manifests mal formatados */ }
                 }
             }
-            catch (Octokit.NotFoundException)
+            catch (Octokit.ApiException ex) when (ex is Octokit.NotFoundException || ex.Message.Contains("Git Repository is empty") || ex.Message.Contains("empty"))
             {
-                // Repositório ou branch não existem ainda.
-                _logger.LogWarning("Repositório de storage ou branch não encontrado.");
+                // Repositório ou branch não existem ainda ou o repositório está vazio.
+                _logger.LogWarning("Repositório de storage não encontrado, branch inexistente ou repositório vazio.");
             }
 
             return resultados.OrderByDescending(r => r.CriadoEm).ToList();
