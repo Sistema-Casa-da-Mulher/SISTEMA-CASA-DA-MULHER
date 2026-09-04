@@ -65,7 +65,11 @@ public sealed class HmlDbSnapshotService
         var persistenciaReal = isEfemeral && Configured ? "snapshot-github" : "disco-local";
 
         string message;
-        if (persistenciaReal == "snapshot-github" && _state.UltimoSnapshotSucesso)
+        if (_state.UploadsBloqueados)
+        {
+            message = "Restore remoto falhou. A aplicação iniciou em modo degradado e novos snapshots estão bloqueados até um restore válido.";
+        }
+        else if (persistenciaReal == "snapshot-github" && _state.UltimoSnapshotSucesso)
         {
             message = "Persistência de homologação ativa via snapshot criptografado no GitHub.";
         }
@@ -138,6 +142,8 @@ public sealed class HmlDbSnapshotService
             _state.UltimoRestoreSucesso,
             _state.UltimoRestoreEm,
             _state.UltimoErroRestore,
+            _state.UploadsBloqueados,
+            _state.MotivoUploadsBloqueados,
             EnabledRequested,
             _configuration.GetValue("HML_DB_SNAPSHOT_AUTO_ENABLED", true),
             _environment.EnvironmentName);
@@ -171,55 +177,58 @@ public sealed class HmlDbSnapshotService
         }
 
         _state.MarkRestoreChamado(configurado: true);
-        _logger.LogInformation("HML snapshot restore: lendo manifest em {Path}", ManifestPath);
-        var remoteManifestFile = await _github.ReadAsync(ManifestPath, cancellationToken);
-        if (remoteManifestFile is null)
-        {
-            _logger.LogWarning("HML snapshot restore: manifesto não existe em {Path}; banco novo será criado.", ManifestPath);
-            return false;
-        }
-
-        var manifest = DeserializeManifest(remoteManifestFile.Content);
-        if (manifest is null || string.IsNullOrWhiteSpace(manifest.Current.File))
-        {
-            _logger.LogWarning("HML snapshot restore: manifesto inválido ou arquivo ausente.");
-            return false;
-        }
-
-        _logger.LogInformation(
-            "HML snapshot restore: manifesto encontrado. Generation={Gen} Arquivo={File}",
-            manifest.Current.Generation, manifest.Current.File);
-
-        if (HasValidLocalDatabase())
-        {
-            _state.LoadedGeneration = manifest.Current.Generation;
-            var localHash = await ComputeConsistentDatabaseHashAsync(cancellationToken);
-            if (!string.Equals(localHash, manifest.Current.DatabaseHash, StringComparison.OrdinalIgnoreCase))
-            {
-                var message = $"Banco local preservado: o hash local difere do snapshot remoto da geração {manifest.Current.Generation}.";
-                _state.MarkConflict(message);
-                _logger.LogWarning("HML snapshot restore: {Message} Nenhum restore foi executado por cima do banco existente.", message);
-            }
-            else
-            {
-                _state.MarkSuccess(manifest.Current.CreatedAt, manifest.Current.Source);
-                _logger.LogInformation("HML snapshot restore: banco local já está sincronizado com a generation {Gen}.", manifest.Current.Generation);
-            }
-            return false;
-        }
-
-        _logger.LogInformation("HML snapshot restore: restaurando arquivo {File} para {DbPath}", manifest.Current.File, _storage.DatabasePath);
-        var remote = await _github.ReadAsync($"data/render-hml-db/{manifest.Current.File}", cancellationToken);
-        if (remote is null)
-        {
-            var msg = $"HML snapshot restore: arquivo de snapshot {manifest.Current.File} não encontrado no repositório.";
-            _state.MarkRestoreError(msg);
-            _logger.LogError(msg);
-            return false;
-        }
-
         try
         {
+            _logger.LogInformation("HML snapshot restore: lendo manifest em {Path}", ManifestPath);
+            var remoteManifestFile = await _github.ReadAsync(ManifestPath, cancellationToken);
+            if (remoteManifestFile is null)
+            {
+                _state.MarkRestoreSemSnapshot();
+                _logger.LogWarning("HML snapshot restore: manifesto não existe em {Path}; banco novo será criado.", ManifestPath);
+                return false;
+            }
+
+            var manifest = DeserializeManifest(remoteManifestFile.Content);
+            if (manifest is null || string.IsNullOrWhiteSpace(manifest.Current.File))
+            {
+                const string msg = "Manifesto do snapshot é inválido ou não informa o arquivo atual.";
+                _state.MarkRestoreError(msg);
+                _logger.LogError("HML snapshot restore: {Message}", msg);
+                return false;
+            }
+
+            _logger.LogInformation(
+                "HML snapshot restore: manifesto encontrado. Generation={Gen} Arquivo={File}",
+                manifest.Current.Generation, manifest.Current.File);
+
+            if (HasValidLocalDatabase())
+            {
+                _state.LoadedGeneration = manifest.Current.Generation;
+                var localHash = await ComputeConsistentDatabaseHashAsync(cancellationToken);
+                if (!string.Equals(localHash, manifest.Current.DatabaseHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    var message = $"Banco local preservado: o hash local difere do snapshot remoto da geração {manifest.Current.Generation}.";
+                    _state.MarkConflict(message);
+                    _logger.LogWarning("HML snapshot restore: {Message} Nenhum restore foi executado por cima do banco existente.", message);
+                }
+                else
+                {
+                    _state.MarkSuccess(manifest.Current.CreatedAt, manifest.Current.Source);
+                    _logger.LogInformation("HML snapshot restore: banco local já está sincronizado com a generation {Gen}.", manifest.Current.Generation);
+                }
+                return false;
+            }
+
+            _logger.LogInformation("HML snapshot restore: restaurando arquivo {File} para {DbPath}", manifest.Current.File, _storage.DatabasePath);
+            var remote = await _github.ReadAsync($"data/render-hml-db/{manifest.Current.File}", cancellationToken);
+            if (remote is null)
+            {
+                var msg = $"HML snapshot restore: arquivo de snapshot {manifest.Current.File} não encontrado no repositório.";
+                _state.MarkRestoreError(msg);
+                _logger.LogError("{Message}", msg);
+                return false;
+            }
+
             var encryptedHash = Convert.ToHexString(SHA256.HashData(remote.Content)).ToLowerInvariant();
             if (encryptedHash != manifest.Current.EncryptedHash)
             {
@@ -271,10 +280,17 @@ public sealed class HmlDbSnapshotService
                 CryptographicOperations.ZeroMemory(key);
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            _state.MarkRestoreError(ex.Message);
-            _logger.LogError(ex, "Falha ao restaurar snapshot no startup.");
+            var message = DescreverErroRestore(ex);
+            _state.MarkRestoreError(message);
+            _logger.LogError(ex,
+                "Falha ao restaurar snapshot no startup. A aplicação continuará em modo degradado e uploads de snapshot ficarão bloqueados. Motivo: {Message}",
+                message);
             return false;
         }
     }
@@ -296,6 +312,12 @@ public sealed class HmlDbSnapshotService
     {
         if (!Configured) throw new InvalidOperationException(GetStatus().Message);
         if (!HasValidLocalDatabase()) throw new InvalidOperationException("Banco SQLite de homologação ainda não existe.");
+        if (_state.UploadsBloqueados)
+        {
+            throw new InvalidOperationException(
+                _state.MotivoUploadsBloqueados
+                ?? "Uploads bloqueados porque o restore remoto não foi validado.");
+        }
         if (_state.HasConflict) throw new InvalidOperationException(_state.LastError ?? "Conflito de snapshot pendente; faça pull/redeploy antes de enviar.");
 
         var remoteManifestFile = await _github.ReadAsync(ManifestPath, cancellationToken);
@@ -403,6 +425,16 @@ public sealed class HmlDbSnapshotService
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             PropertyNameCaseInsensitive = true
         });
+
+    private static string DescreverErroRestore(Exception ex)
+    {
+        if (ex is HttpRequestException { StatusCode: not null } httpException)
+        {
+            return $"GitHub respondeu HTTP {(int)httpException.StatusCode.Value} ({httpException.StatusCode.Value}). Verifique o token de leitura e o acesso ao repositório.";
+        }
+
+        return ex.Message;
+    }
 
     private async Task<string> ComputeConsistentDatabaseHashAsync(CancellationToken cancellationToken)
     {

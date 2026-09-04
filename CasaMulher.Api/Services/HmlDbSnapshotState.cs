@@ -8,6 +8,8 @@ public sealed class HmlDbSnapshotState
     private string? _lastSnapshotSource;
     private string? _lastError;
     private bool _hasConflict;
+    private bool _uploadsBloqueados;
+    private string? _motivoUploadsBloqueados;
 
     private bool _ultimoSnapshotSucesso;
     private bool _ultimoRestoreSucesso;
@@ -48,6 +50,16 @@ public sealed class HmlDbSnapshotState
         get { lock (_sync) return _hasConflict; }
     }
 
+    public bool UploadsBloqueados
+    {
+        get { lock (_sync) return _uploadsBloqueados; }
+    }
+
+    public string? MotivoUploadsBloqueados
+    {
+        get { lock (_sync) return _motivoUploadsBloqueados; }
+    }
+
     public bool UltimoSnapshotSucesso => _ultimoSnapshotSucesso;
     public bool UltimoRestoreSucesso => _ultimoRestoreSucesso;
     public DateTimeOffset? UltimoRestoreEm => _ultimoRestoreEm;
@@ -66,6 +78,8 @@ public sealed class HmlDbSnapshotState
             _lastSnapshotSource = source;
             _lastError = null;
             _hasConflict = false;
+            _uploadsBloqueados = false;
+            _motivoUploadsBloqueados = null;
             _ultimoSnapshotSucesso = true;
         }
     }
@@ -97,6 +111,8 @@ public sealed class HmlDbSnapshotState
             _ultimoRestoreSucesso = true;
             _ultimoErroRestore = null;
             _restoreExecutado = true;
+            _uploadsBloqueados = false;
+            _motivoUploadsBloqueados = null;
         }
     }
 
@@ -107,6 +123,20 @@ public sealed class HmlDbSnapshotState
             _ultimoErroRestore = message;
             _ultimoRestoreSucesso = false;
             _restoreExecutado = true;
+            _uploadsBloqueados = true;
+            _motivoUploadsBloqueados = message;
+        }
+    }
+
+    public void MarkRestoreSemSnapshot()
+    {
+        lock (_sync)
+        {
+            _ultimoRestoreSucesso = false;
+            _ultimoErroRestore = null;
+            _restoreExecutado = true;
+            _uploadsBloqueados = false;
+            _motivoUploadsBloqueados = null;
         }
     }
 
@@ -144,6 +174,8 @@ public sealed record HmlDbSnapshotDiagnostic(
     bool UltimoRestoreSucesso,
     DateTimeOffset? UltimoRestoreEm,
     string? UltimoErroRestore,
+    bool UploadsBloqueados,
+    string? MotivoUploadsBloqueados,
     bool HmlDbSnapshotEnabled,
     bool HmlDbSnapshotAutoEnabled,
     string Ambiente);

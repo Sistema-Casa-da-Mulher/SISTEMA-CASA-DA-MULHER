@@ -31,6 +31,8 @@ public class EquipeController : ControllerBase
     private readonly IMasterUserService _masterUserService;
     private readonly ContaEquipeSincronizadaService _contaEquipeSincronizadaService;
     private readonly IWebHostEnvironment _environment;
+    private readonly IContextoAcessoEfetivoService _contextoAcesso;
+    private readonly EquipeDbSyncService _equipeDbSyncService;
 
     public EquipeController(
         AppDbContext dbContext,
@@ -42,7 +44,9 @@ public class EquipeController : ControllerBase
         IEquipeGithubService githubService,
         IMasterUserService masterUserService,
         ContaEquipeSincronizadaService contaEquipeSincronizadaService,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IContextoAcessoEfetivoService contextoAcesso,
+        EquipeDbSyncService equipeDbSyncService)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -54,6 +58,8 @@ public class EquipeController : ControllerBase
         _masterUserService = masterUserService;
         _contaEquipeSincronizadaService = contaEquipeSincronizadaService;
         _environment = environment;
+        _contextoAcesso = contextoAcesso;
+        _equipeDbSyncService = equipeDbSyncService;
     }
 
     [Authorize(Policy = PoliticasAcesso.AcessoEquipe)]
@@ -62,11 +68,16 @@ public class EquipeController : ControllerBase
     {
         var usuarioId = ObterUsuarioAtualId();
         var podeGerenciar = await PodeGerenciarMembrosEquipeAsync();
+        var podeRestaurarPermissoes = await UsuarioAtualEhMasterAsync();
         var membros = await _dbContext.EquipeMembros
             .OrderBy(membro => membro.CodigoEquipe)
             .ToListAsync();
 
-        return Ok(membros.Select(membro => MapearMembro(membro, usuarioId, podeGerenciar)));
+        return Ok(membros.Select(membro => MapearMembro(
+            membro,
+            usuarioId,
+            podeGerenciar,
+            podeRestaurarPermissoes)));
     }
 
     [Authorize(Policy = PoliticasAcesso.AcessoEquipe)]
@@ -157,7 +168,65 @@ public class EquipeController : ControllerBase
             membro.Id.ToString(),
             $"Atualizou membro {membro.CodigoEquipe} com papel {membro.PapelEquipe} e fluxo {membro.FluxoTrabalho}.");
 
-        return Ok(MapearMembro(membro, ObterUsuarioAtualId(), true));
+        return Ok(MapearMembro(
+            membro,
+            ObterUsuarioAtualId(),
+            true,
+            await UsuarioAtualEhMasterAsync()));
+    }
+
+    [Authorize(Policy = PoliticasAcesso.AcessoEquipe)]
+    [HttpPost("membros/{id:int}/restaurar-permissoes-padrao")]
+    public async Task<ActionResult<RestaurarPermissoesEquipeResponse>> RestaurarPermissoesPadrao(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        if (!await UsuarioAtualEhMasterAsync())
+        {
+            return Forbid();
+        }
+
+        var membro = await _dbContext.EquipeMembros.FindAsync([id], cancellationToken);
+        if (membro is null)
+        {
+            return NotFound(new { mensagem = "Membro da equipe não encontrado." });
+        }
+
+        try
+        {
+            var resultado = await _equipeDbSyncService.RestaurarPermissoesPadraoAsync(
+                membro.CodigoEquipe,
+                cancellationToken);
+
+            await _dbContext.Entry(membro).ReloadAsync(cancellationToken);
+            await _auditoriaService.RegistrarAsync(
+                "EQUIPE_PERMISSOES_PADRAO_RESTAURADAS",
+                "EquipeMembro",
+                membro.Id.ToString(),
+                $"Restaurou as permissões padrão de {resultado.EqpId}/{resultado.AdmId}. "
+                + $"Roles: {string.Join(", ", resultado.Roles)}; papel: {resultado.PapelEquipe}; fluxo: {resultado.FluxoTrabalho}.");
+
+            return Ok(new RestaurarPermissoesEquipeResponse
+            {
+                Mensagem = $"Permissões padrão de {resultado.EqpId}/{resultado.AdmId} restauradas. O usuário deve sair e entrar novamente.",
+                EqpId = resultado.EqpId,
+                AdmId = resultado.AdmId,
+                Roles = resultado.Roles,
+                Membro = MapearMembro(membro, ObterUsuarioAtualId(), true, true)
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensagem = ex.Message });
+        }
+        catch (EquipeDbGitHubException ex)
+        {
+            return StatusCode(ex.StatusCode, new { mensagem = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { mensagem = ex.Message });
+        }
     }
 
     [Authorize(Policy = PoliticasAcesso.AcessoEquipe)]
@@ -854,36 +923,14 @@ public class EquipeController : ControllerBase
 
     private async Task<bool> UsuarioAtualEhSuperAdminInstitucionalAsync()
     {
-        var usuarioId = ObterUsuarioAtualId();
-
-        if (string.IsNullOrWhiteSpace(usuarioId))
-        {
-            return false;
-        }
-
-        var usuario = await _userManager.FindByIdAsync(usuarioId);
-        return _masterUserService.EhSuperAdminInstitucional(usuario);
+        return await _contextoAcesso.EhSuperAdminInstitucionalAsync(
+            User,
+            HttpContext.RequestAborted);
     }
 
     private async Task<bool> UsuarioAtualEhMasterAsync()
     {
-        if (await UsuarioAtualEhSuperAdminInstitucionalAsync())
-        {
-            return true;
-        }
-
-        var usuarioId = ObterUsuarioAtualId();
-
-        if (string.IsNullOrWhiteSpace(usuarioId))
-        {
-            return false;
-        }
-
-        return await _dbContext.EquipeMembros.AnyAsync(membro =>
-            membro.UserId == usuarioId
-            && membro.Ativo
-            && membro.PapelEquipe == EquipePapeis.Owner
-            && membro.CodigoEquipe == _masterUserService.EquipeOwnerCodigo);
+        return await _contextoAcesso.EhMasterAsync(User, HttpContext.RequestAborted);
     }
 
     private async Task<bool> ExisteOutroOwnerOuAdmAtivoAsync(string userId, int membroId)
@@ -1085,7 +1132,11 @@ public class EquipeController : ControllerBase
         };
     }
 
-    private static EquipeMembroResponse MapearMembro(EquipeMembro membro, string usuarioAtualId, bool podeGerenciar)
+    private static EquipeMembroResponse MapearMembro(
+        EquipeMembro membro,
+        string usuarioAtualId,
+        bool podeGerenciar,
+        bool podeRestaurarPermissoesPadrao)
     {
         var ehVoce = string.Equals(membro.UserId, usuarioAtualId, StringComparison.Ordinal);
 
@@ -1110,6 +1161,7 @@ public class EquipeController : ControllerBase
             AtualizadoEm = membro.AtualizadoEm,
             PodeEditar = podeGerenciar,
             PodeGerarResetSenha = podeGerenciar,
+            PodeRestaurarPermissoesPadrao = podeRestaurarPermissoesPadrao,
             EhVoce = ehVoce
         };
     }

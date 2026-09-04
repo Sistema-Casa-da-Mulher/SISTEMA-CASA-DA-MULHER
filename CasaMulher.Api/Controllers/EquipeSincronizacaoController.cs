@@ -1,5 +1,6 @@
 using System.Text.Json;
 using CasaMulher.Api.DTOs;
+using CasaMulher.Api.Security;
 using CasaMulher.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,22 +18,30 @@ public class EquipeSincronizacaoController : ControllerBase
 
     private readonly EquipeDbSyncService _syncService;
     private readonly IWebHostEnvironment _environment;
+    private readonly IContextoAcessoEfetivoService _contextoAcesso;
 
     public EquipeSincronizacaoController(
         EquipeDbSyncService syncService,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IContextoAcessoEfetivoService contextoAcesso)
     {
         _syncService = syncService;
         _environment = environment;
+        _contextoAcesso = contextoAcesso;
     }
 
-    [AllowAnonymous]
+    [Authorize(Policy = PoliticasAcesso.AcessoEquipe)]
     [HttpPost("sincronizar-github-db")]
     public async Task<ActionResult<SincronizarEquipeDbResponse>> SincronizarGithubDb(CancellationToken cancellationToken)
     {
         if (!_environment.IsDevelopment() && !_environment.IsStaging())
         {
             return NotFound(new { mensagem = "Sincronização EQP disponível apenas em Development/Staging." });
+        }
+
+        if (!await _contextoAcesso.EhMasterAsync(User, cancellationToken))
+        {
+            return Forbid();
         }
 
         var document = await LerDocumentoOpcionalAsync(cancellationToken);

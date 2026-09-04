@@ -10,6 +10,12 @@ namespace CasaMulher.Api.Services;
 
 public class EquipeDbSyncService
 {
+    private static readonly string[] RolesPadraoContaPareada =
+    [
+        PerfisAcesso.Equipe,
+        PerfisAcesso.Adm
+    ];
+
     private readonly AppDbContext _dbContext;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
@@ -143,6 +149,78 @@ public class EquipeDbSyncService
 
         response.Mensagem = $"Sincronização concluída com {response.MembrosImportados} membro(s).";
         return response;
+    }
+
+    public async Task<RestaurarPermissoesEquipeResult> RestaurarPermissoesPadraoAsync(
+        string codigoEquipe,
+        CancellationToken cancellationToken = default)
+    {
+        var codigoNormalizado = codigoEquipe.Trim().ToUpperInvariant();
+        var document = (await _githubDbService.LerAsync(cancellationToken)).Document;
+        EquipeDbGitHubService.NormalizarDocumento(document);
+
+        var membroPadrao = document.Membros.SingleOrDefault(membro =>
+            string.Equals(membro.Status, "ativo", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(membro.EqpId, codigoNormalizado, StringComparison.OrdinalIgnoreCase));
+
+        if (membroPadrao is null)
+        {
+            throw new KeyNotFoundException(
+                $"O membro {codigoNormalizado} não possui um cadastro ativo no banco canônico da equipe.");
+        }
+
+        var usuario = await EncontrarUsuarioPorMembroAsync(membroPadrao, cancellationToken)
+            ?? throw new KeyNotFoundException(
+                $"A conta local vinculada a {codigoNormalizado} não foi encontrada.");
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        await GarantirRoleAsync(PerfisAcesso.Equipe);
+        await GarantirRoleAsync(PerfisAcesso.Adm);
+
+        var rolesAtuais = await _userManager.GetRolesAsync(usuario);
+        var rolesRemover = rolesAtuais
+            .Where(role => !RolesPadraoContaPareada.Contains(role, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (rolesRemover.Length > 0)
+        {
+            var removeResult = await _userManager.RemoveFromRolesAsync(usuario, rolesRemover);
+            if (!removeResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Não foi possível remover roles fora do padrão: {FormatarErros(removeResult)}");
+            }
+        }
+
+        foreach (var role in RolesPadraoContaPareada)
+        {
+            await GarantirRoleUsuarioAsync(usuario, role);
+        }
+
+        await DesativarAliasesForaDoPadraoAsync(usuario.Id, membroPadrao, cancellationToken);
+        await GarantirIdentificadorAsync(usuario.Id, membroPadrao.EqpId, "EQP", cancellationToken);
+        await GarantirIdentificadorAsync(usuario.Id, membroPadrao.AdmId, "ADM", cancellationToken);
+
+        usuario.Ativo = true;
+        usuario.Perfil = usuario.IdentificadorFuncionario.StartsWith("ADM-", StringComparison.OrdinalIgnoreCase)
+            ? PerfisAcesso.Adm
+            : PerfisAcesso.Equipe;
+
+        var entry = _dbContext.Entry(usuario);
+        entry.Property(item => item.Ativo).IsModified = true;
+        entry.Property(item => item.Perfil).IsModified = true;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await SincronizarEquipeMembroAsync(usuario, membroPadrao, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return new RestaurarPermissoesEquipeResult(
+            membroPadrao.EqpId,
+            membroPadrao.AdmId,
+            RolesPadraoContaPareada,
+            membroPadrao.PapelEquipe,
+            membroPadrao.FluxoTrabalho);
     }
 
     private async Task<ApplicationUser?> EncontrarUsuarioPorMembroAsync(
@@ -367,6 +445,35 @@ public class EquipeDbSyncService
             .CountAsync(cancellationToken);
     }
 
+    private async Task DesativarAliasesForaDoPadraoAsync(
+        string userId,
+        EquipeDbMembro membro,
+        CancellationToken cancellationToken)
+    {
+        var aliasesPadrao = new[]
+        {
+            membro.EqpId.Trim().ToUpperInvariant(),
+            membro.AdmId.Trim().ToUpperInvariant()
+        };
+        var aliasesForaDoPadrao = await _dbContext.UserLoginIdentifiers
+            .Where(item => item.UserId == userId
+                && item.Ativo
+                && (item.Tipo == "EQP" || item.Tipo == "ADM")
+                && !aliasesPadrao.Contains(item.Identificador.ToUpper()))
+            .ToListAsync(cancellationToken);
+
+        foreach (var alias in aliasesForaDoPadrao)
+        {
+            alias.Ativo = false;
+            alias.AtualizadoEm = DateTime.UtcNow;
+        }
+
+        if (aliasesForaDoPadrao.Count > 0)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
     private async Task SincronizarEquipeMembroAsync(
         ApplicationUser usuario,
         EquipeDbMembro membro,
@@ -421,7 +528,12 @@ public class EquipeDbSyncService
     {
         if (!await _roleManager.RoleExistsAsync(role))
         {
-            await _roleManager.CreateAsync(new IdentityRole(role));
+            var resultado = await _roleManager.CreateAsync(new IdentityRole(role));
+            if (!resultado.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Não foi possível criar a role {role}: {FormatarErros(resultado)}");
+            }
         }
     }
 
@@ -429,9 +541,17 @@ public class EquipeDbSyncService
     {
         if (!await _userManager.IsInRoleAsync(usuario, role))
         {
-            await _userManager.AddToRoleAsync(usuario, role);
+            var resultado = await _userManager.AddToRoleAsync(usuario, role);
+            if (!resultado.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Não foi possível vincular a role {role} ao usuário {usuario.Id}: {FormatarErros(resultado)}");
+            }
         }
     }
+
+    private static string FormatarErros(IdentityResult resultado) =>
+        string.Join("; ", resultado.Errors.Select(error => error.Description));
 
     private static bool MembroAtivo(EquipeDbMembro membro)
     {
@@ -441,3 +561,10 @@ public class EquipeDbSyncService
             && !string.IsNullOrWhiteSpace(membro.PasswordHash);
     }
 }
+
+public sealed record RestaurarPermissoesEquipeResult(
+    string EqpId,
+    string AdmId,
+    IReadOnlyCollection<string> Roles,
+    string PapelEquipe,
+    string FluxoTrabalho);

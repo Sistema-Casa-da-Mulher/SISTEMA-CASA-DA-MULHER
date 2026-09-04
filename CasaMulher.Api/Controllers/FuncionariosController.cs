@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using CasaMulher.Api.Data;
 using CasaMulher.Api.DTOs;
 using CasaMulher.Api.Models;
@@ -22,6 +21,7 @@ public class FuncionariosController : ControllerBase
     private readonly IAuditoriaService _auditoriaService;
     private readonly IRedefinicaoSenhaEmailService _redefinicaoSenhaEmailService;
     private readonly IMasterUserService _masterUserService;
+    private readonly IContextoAcessoEfetivoService _contextoAcesso;
 
     public FuncionariosController(
         AppDbContext dbContext,
@@ -29,7 +29,8 @@ public class FuncionariosController : ControllerBase
         RoleManager<IdentityRole> roleManager,
         IAuditoriaService auditoriaService,
         IRedefinicaoSenhaEmailService redefinicaoSenhaEmailService,
-        IMasterUserService masterUserService)
+        IMasterUserService masterUserService,
+        IContextoAcessoEfetivoService contextoAcesso)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -37,6 +38,7 @@ public class FuncionariosController : ControllerBase
         _auditoriaService = auditoriaService;
         _redefinicaoSenhaEmailService = redefinicaoSenhaEmailService;
         _masterUserService = masterUserService;
+        _contextoAcesso = contextoAcesso;
     }
 
     [HttpGet]
@@ -325,35 +327,9 @@ public class FuncionariosController : ControllerBase
 
     private async Task<bool> PodeGerenciarFuncionariosInstitucionaisAsync()
     {
-        var usuarioId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (string.IsNullOrWhiteSpace(usuarioId))
-        {
-            return false;
-        }
-
-        var usuario = await _userManager.FindByIdAsync(usuarioId);
-
-        if (usuario is null || !usuario.Ativo)
-        {
-            return false;
-        }
-
-        if (string.Equals(usuario.Perfil, PerfisAcesso.Adm, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (!string.Equals(usuario.Perfil, PerfisAcesso.Equipe, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return await _dbContext.EquipeMembros.AnyAsync(membro =>
-            membro.UserId == usuario.Id
-            && membro.Ativo
-            && membro.PapelEquipe == EquipePapeis.Owner
-            && membro.CodigoEquipe == _masterUserService.EquipeOwnerCodigo);
+        return await _contextoAcesso.PodeGerenciarAreaInstitucionalAsync(
+            User,
+            HttpContext.RequestAborted);
     }
 
     private async Task<bool> PodeExecutarAcaoFuncionarioAsync(ApplicationUser funcionario, string? novoPerfil = null)
@@ -368,18 +344,9 @@ public class FuncionariosController : ControllerBase
             return true;
         }
 
-        var usuarioId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (string.IsNullOrWhiteSpace(usuarioId))
-        {
-            return false;
-        }
-
-        var usuarioAtual = await _userManager.FindByIdAsync(usuarioId);
-
-        if (usuarioAtual is null
-            || !usuarioAtual.Ativo
-            || !string.Equals(usuarioAtual.Perfil, PerfisAcesso.Adm, StringComparison.OrdinalIgnoreCase))
+        var contexto = await _contextoAcesso.ObterAsync(User, HttpContext.RequestAborted);
+        if (contexto is null
+            || !string.Equals(contexto.Perfil, PerfisAcesso.Adm, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -399,32 +366,7 @@ public class FuncionariosController : ControllerBase
 
     private async Task<bool> UsuarioAtualEhMasterAsync()
     {
-        var usuarioId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (string.IsNullOrWhiteSpace(usuarioId))
-        {
-            return false;
-        }
-
-        var usuario = await _userManager.FindByIdAsync(usuarioId);
-
-        if (_masterUserService.EhSuperAdminInstitucional(usuario))
-        {
-            return true;
-        }
-
-        if (usuario is null
-            || !usuario.Ativo
-            || !string.Equals(usuario.Perfil, PerfisAcesso.Equipe, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return await _dbContext.EquipeMembros.AnyAsync(membro =>
-            membro.UserId == usuario.Id
-            && membro.Ativo
-            && membro.PapelEquipe == EquipePapeis.Owner
-            && membro.CodigoEquipe == _masterUserService.EquipeOwnerCodigo);
+        return await _contextoAcesso.EhMasterAsync(User, HttpContext.RequestAborted);
     }
 
     private async Task<ActionResult?> ValidarDesativacaoSeguraAsync(ApplicationUser funcionario)

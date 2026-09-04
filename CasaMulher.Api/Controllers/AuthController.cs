@@ -1481,19 +1481,10 @@ public partial class AuthController : ControllerBase
 
     private static string ObterPerfilDoContexto(string tipo, string identificador, string perfilPadrao)
     {
-        if (string.Equals(tipo, "EQP", StringComparison.OrdinalIgnoreCase)
-            || identificador.StartsWith("EQP-", StringComparison.OrdinalIgnoreCase))
-        {
-            return PerfisAcesso.Equipe;
-        }
-
-        if (string.Equals(tipo, "ADM", StringComparison.OrdinalIgnoreCase)
-            || identificador.StartsWith("ADM-", StringComparison.OrdinalIgnoreCase))
-        {
-            return PerfisAcesso.Adm;
-        }
-
-        return perfilPadrao;
+        return ContextoAcessoEfetivoService.ObterPerfilDoContexto(
+            tipo,
+            identificador,
+            perfilPadrao);
     }
 
     private static IReadOnlyCollection<string> SelecionarRolesDaSessao(

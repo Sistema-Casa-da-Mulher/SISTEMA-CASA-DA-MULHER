@@ -2718,6 +2718,9 @@ async function setupEquipeMembros() {
 
             lista.innerHTML = membros.map(function (membro) {
                 const podeEditar = Boolean(membro.podeEditar);
+                const restaurarPermissoes = membro.podeRestaurarPermissoesPadrao
+                    ? `<button type="button" class="btn-link" data-action="restaurar-permissoes" data-id="${membro.id}">Restaurar padrão</button>`
+                    : "";
                 const controls = podeEditar
                     ? `
                         <select data-field="papel" data-id="${membro.id}">
@@ -2733,6 +2736,7 @@ async function setupEquipeMembros() {
                         </select>
                         <button type="button" class="btn-link" data-action="salvar" data-id="${membro.id}">Salvar</button>
                         <button type="button" class="btn-link" data-action="reset" data-id="${membro.id}">Gerar redefinição</button>
+                        ${restaurarPermissoes}
                     `
                     : "-";
 
@@ -2772,6 +2776,47 @@ async function setupEquipeMembros() {
         });
 
         if (!membro) {
+            return;
+        }
+
+        if (button.dataset.action === "restaurar-permissoes") {
+            const confirmou = window.confirm(
+                `Restaurar as permissões padrão de ${membro.codigoEquipe}?\n\n`
+                + "Serão restaurados os aliases EQP/ADM, roles, papel, fluxo e status. "
+                + "Senha, 2FA e passkeys não serão alterados."
+            );
+
+            if (!confirmou) {
+                return;
+            }
+
+            button.disabled = true;
+            setMessage(mensagem, "Restaurando permissões padrão...", "info");
+
+            try {
+                const response = await CasaMulherAuth.apiFetch(
+                    `/api/equipe/membros/${id}/restaurar-permissoes-padrao`,
+                    {
+                        method: "POST",
+                        headers: getAuthHeaders(false),
+                        mensagemElement: mensagem
+                    }
+                );
+
+                if (!response.ok) {
+                    setMessage(mensagem, await readApiMessage(response), "error");
+                    return;
+                }
+
+                const resultado = await response.json();
+                setMessage(mensagem, resultado.mensagem, "success");
+                await carregarMembros();
+            } catch {
+                setMessage(mensagem, "Não foi possível conectar à API.", "error");
+            } finally {
+                button.disabled = false;
+            }
+
             return;
         }
 

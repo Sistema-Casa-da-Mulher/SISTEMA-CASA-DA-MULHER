@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using CasaMulher.Api.Security;
 using CasaMulher.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -14,26 +13,26 @@ using Microsoft.EntityFrameworkCore;
 namespace CasaMulher.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = PoliticasAcesso.AcessoEquipe)]
 [Route("api/homologacao")]
 public sealed class HomologacaoController : ControllerBase
 {
     private readonly HmlDbSnapshotService _snapshot;
-    private readonly IMasterUserService _masterUser;
     private readonly HomologacaoSeedService _seed;
+    private readonly IContextoAcessoEfetivoService _contextoAcesso;
 
     public HomologacaoController(
         HmlDbSnapshotService snapshot,
-        IMasterUserService masterUser,
-        HomologacaoSeedService seed)
+        HomologacaoSeedService seed,
+        IContextoAcessoEfetivoService contextoAcesso)
     {
         _snapshot = snapshot;
-        _masterUser = masterUser;
         _seed = seed;
+        _contextoAcesso = contextoAcesso;
     }
 
     [HttpGet("status")]
-    public IActionResult Status()
+    public async Task<IActionResult> Status()
     {
         var status = _snapshot.GetStatus();
         return Ok(new
@@ -44,14 +43,14 @@ public sealed class HomologacaoController : ControllerBase
             status.Repository,
             status.SnapshotPath,
             status.Message,
-            podeGerenciar = OwnerAtual()
+            podeGerenciar = await OwnerAtualAsync()
         });
     }
 
     [HttpPost("snapshot")]
     public async Task<IActionResult> Snapshot(CancellationToken cancellationToken)
     {
-        if (!OwnerAtual()) return Forbid();
+        if (!await OwnerAtualAsync()) return Forbid();
         try
         {
             await _snapshot.CreateAndUploadAsync(cancellationToken, "owner_manual");
@@ -70,7 +69,7 @@ public sealed class HomologacaoController : ControllerBase
     [HttpGet("snapshot/status")]
     public async Task<IActionResult> SnapshotStatus(CancellationToken cancellationToken)
     {
-        if (!OwnerAtual()) return Forbid();
+        if (!await OwnerAtualAsync()) return Forbid();
         var status = await _snapshot.GetDiagnosticAsync(cancellationToken);
         return Ok(new Dictionary<string, object?>
         {
@@ -96,6 +95,8 @@ public sealed class HomologacaoController : ControllerBase
             ["ultimoRestoreSucesso"] = status.UltimoRestoreSucesso,
             ["ultimoRestoreEm"] = status.UltimoRestoreEm,
             ["ultimoErroRestore"] = status.UltimoErroRestore,
+            ["uploadsBloqueados"] = status.UploadsBloqueados,
+            ["motivoUploadsBloqueados"] = status.MotivoUploadsBloqueados,
             ["HML_DB_SNAPSHOT_ENABLED"] = status.HmlDbSnapshotEnabled,
             ["HML_DB_SNAPSHOT_AUTO_ENABLED"] = status.HmlDbSnapshotAutoEnabled,
             ["ambiente"] = status.Ambiente
@@ -405,11 +406,9 @@ public sealed class HomologacaoController : ControllerBase
 
         return Ok(result.Payload);
     }
-    private bool OwnerAtual()
+    private Task<bool> OwnerAtualAsync()
     {
-        var identificador = User.FindFirstValue("identificadorFuncionario");
-        return _masterUser.EhEquipeOwnerPrincipal(identificador)
-            || string.Equals(identificador, _masterUser.SuperAdminIdentificador, StringComparison.OrdinalIgnoreCase);
+        return _contextoAcesso.EhMasterAsync(User, HttpContext.RequestAborted);
     }
 }
 

@@ -9,6 +9,7 @@ using Fido2NetLib;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -153,28 +154,36 @@ var rolesRelatorios = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, Perf
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(PoliticasAcesso.SomenteAdm, policy =>
-        policy.RequireRole(rolesSomenteAdm));
+        policy.RequireRole(rolesSomenteAdm)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 
     options.AddPolicy(PoliticasAcesso.AcessoRecepcao, policy =>
-        policy.RequireRole(rolesRecepcao));
+        policy.RequireRole(rolesRecepcao)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 
     options.AddPolicy(PoliticasAcesso.AcessoCursos, policy =>
-        policy.RequireRole(rolesCursos));
+        policy.RequireRole(rolesCursos)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 
     options.AddPolicy(PoliticasAcesso.AcessoProntuarioSocial, policy =>
-        policy.RequireRole(rolesProntuarioSocial));
+        policy.RequireRole(rolesProntuarioSocial)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 
     options.AddPolicy(PoliticasAcesso.AcessoJuridico, policy =>
-        policy.RequireRole(rolesJuridico));
+        policy.RequireRole(rolesJuridico)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 
     options.AddPolicy(PoliticasAcesso.AcessoRelatorios, policy =>
-        policy.RequireRole(rolesRelatorios));
+        policy.RequireRole(rolesRelatorios)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 
     options.AddPolicy(PoliticasAcesso.AcessoEquipe, policy =>
-        policy.RequireRole(PerfisAcesso.Adm, PerfisAcesso.Equipe));
+        policy.RequireRole(PerfisAcesso.Adm, PerfisAcesso.Equipe)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 
     options.AddPolicy(PoliticasAcesso.GerenciarConvitesEquipe, policy =>
-        policy.RequireRole(PerfisAcesso.Adm, PerfisAcesso.Equipe));
+        policy.RequireRole(PerfisAcesso.Adm, PerfisAcesso.Equipe)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 });
 builder.Services.AddRateLimiter(options =>
 {
@@ -256,6 +265,8 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IConviteCodigoService, ConviteCodigoService>();
 builder.Services.AddScoped<IFuncionarioIdentificadorService, GeradorIdentificadorFuncionarioService>();
 builder.Services.AddScoped<IMasterUserService, MasterUserService>();
+builder.Services.AddScoped<IContextoAcessoEfetivoService, ContextoAcessoEfetivoService>();
+builder.Services.AddScoped<IAuthorizationHandler, ContextoAcessoEfetivoAuthorizationHandler>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddScoped<IEquipeStorageService, EquipeStorageService>();
 builder.Services.AddScoped<IRedefinicaoSenhaEmailService, RedefinicaoSenhaEmailService>();

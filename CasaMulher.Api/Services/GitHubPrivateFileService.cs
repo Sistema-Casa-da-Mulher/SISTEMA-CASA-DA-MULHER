@@ -69,8 +69,16 @@ public sealed class GitHubPrivateFileService
         ?? _configuration["GitHub:EqpDbRepo"]
         ?? _configuration["GITHUB_EQP_DB_REPO"]
         ?? "ACESSO-EQUIPE";
-    private string? ReadToken => _configuration["GITHUB_EQP_READ_TOKEN"] ?? WriteToken;
-    private string? WriteToken => _configuration["GITHUB_EQP_WRITE_TOKEN"];
+    private string? ReadToken
+    {
+        get
+        {
+            var readToken = NormalizeToken(_configuration["GITHUB_EQP_READ_TOKEN"]);
+            return string.IsNullOrWhiteSpace(readToken) ? WriteToken : readToken;
+        }
+    }
+
+    private string? WriteToken => NormalizeToken(_configuration["GITHUB_EQP_WRITE_TOKEN"]);
 
     private string ContentUrl(string path)
     {
@@ -86,6 +94,30 @@ public sealed class GitHubPrivateFileService
         request.Headers.UserAgent.ParseAdd("CasaMulherHmlSnapshot/1.0");
         request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
         return request;
+    }
+
+    private static string? NormalizeToken(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        var normalized = token.Trim();
+        if (normalized.Length >= 2
+            && ((normalized[0] == '"' && normalized[^1] == '"')
+                || (normalized[0] == '\'' && normalized[^1] == '\'')))
+        {
+            normalized = normalized[1..^1].Trim();
+        }
+
+        const string bearerPrefix = "Bearer ";
+        if (normalized.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[bearerPrefix.Length..].Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
     private sealed class GitHubContentResponse

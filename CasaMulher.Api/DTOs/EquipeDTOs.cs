@@ -190,7 +190,22 @@ public class EquipeMembroResponse
 
     public bool PodeGerarResetSenha { get; set; }
 
+    public bool PodeRestaurarPermissoesPadrao { get; set; }
+
     public bool EhVoce { get; set; }
+}
+
+public class RestaurarPermissoesEquipeResponse
+{
+    public string Mensagem { get; set; } = string.Empty;
+
+    public string EqpId { get; set; } = string.Empty;
+
+    public string AdmId { get; set; } = string.Empty;
+
+    public IReadOnlyCollection<string> Roles { get; set; } = [];
+
+    public EquipeMembroResponse Membro { get; set; } = new();
 }
 
 public class AtualizarEquipeMembroRequest

@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using CasaMulher.Api.DTOs;
 using CasaMulher.Api.Models;
+using CasaMulher.Api.Security;
 using CasaMulher.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -11,7 +12,7 @@ namespace CasaMulher.Api.Controllers
 {
     [ApiController]
     [Route("api/equipe-ide/ambiente")]
-    [Authorize]
+    [Authorize(Policy = PoliticasAcesso.AcessoEquipe)]
     public class EquipeIdeAmbienteController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -28,28 +29,11 @@ namespace CasaMulher.Api.Controllers
             _env = env;
         }
 
-        private static bool PodeAcessarIde(ApplicationUser usuario)
-        {
-            var perfil = (usuario.Perfil ?? "")
-                .Trim()
-                .ToLowerInvariant();
-
-            var identificador = (usuario.UserName ?? usuario.IdentificadorFuncionario ?? usuario.Id ?? "")
-                .Trim()
-                .ToUpperInvariant();
-
-            return perfil is "adm" or "admin" or "administrador" or "equipe" or "eqp"
-                || identificador.StartsWith("ADM-")
-                || identificador.StartsWith("EQP-");
-        }
-
         [HttpGet("status")]
         public async Task<IActionResult> GetStatus()
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
-
-            if (!PodeAcessarIde(user)) return StatusCode(403);
 
             var githubStatus = await _githubService.ObterStatusAsync();
             var perfis = await _userManager.GetRolesAsync(user);

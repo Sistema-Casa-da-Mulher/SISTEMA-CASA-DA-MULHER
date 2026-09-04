@@ -2,6 +2,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CasaMulher.Api.DTOs;
 using CasaMulher.Api.Models;
+using CasaMulher.Api.Security;
 using CasaMulher.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -12,7 +13,7 @@ namespace CasaMulher.Api.Controllers
 {
     [ApiController]
     [Route("api/equipe-ide/github")]
-    [Authorize]
+    [Authorize(Policy = PoliticasAcesso.AcessoEquipe)]
     public class EquipeIdeGitHubController : ControllerBase
     {
         private readonly IGitHubIdeService _githubService;
@@ -126,12 +127,6 @@ namespace CasaMulher.Api.Controllers
                     conteudo.Count(c => c == '\r'), 
                     conteudo.Count(c => c == '\n'), 
                     conteudo.Contains("\\n"));
-            }
-
-            if (user.Perfil != "equipe" && user.Perfil != "adm")
-            {
-                await _auditoriaService.RegistrarAsync("IDE_REVISAO_BLOQUEADA", "GitHubIde", null, $"Perfil não autorizado: {user.Perfil}", user.IdentificadorFuncionario);
-                return Forbid();
             }
 
             // Validações
