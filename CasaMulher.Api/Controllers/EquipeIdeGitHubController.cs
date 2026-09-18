@@ -22,7 +22,7 @@ namespace CasaMulher.Api.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<EquipeIdeGitHubController> _logger;
         private readonly IAuditoriaService _auditoriaService;
-        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
+        private readonly IFrontendUrlService _frontendUrlService;
 
         public EquipeIdeGitHubController(
             IGitHubIdeService githubService, 
@@ -31,7 +31,7 @@ namespace CasaMulher.Api.Controllers
             UserManager<ApplicationUser> userManager,
             ILogger<EquipeIdeGitHubController> logger,
             IAuditoriaService auditoriaService,
-            Microsoft.Extensions.Configuration.IConfiguration configuration)
+            IFrontendUrlService frontendUrlService)
         {
             _githubService = githubService;
             _usuarioService = usuarioService;
@@ -39,7 +39,7 @@ namespace CasaMulher.Api.Controllers
             _userManager = userManager;
             _logger = logger;
             _auditoriaService = auditoriaService;
-            _configuration = configuration;
+            _frontendUrlService = frontendUrlService;
         }
 
         [HttpGet("status")]
@@ -81,8 +81,8 @@ namespace CasaMulher.Api.Controllers
         [HttpGet("callback")]
         public async Task<IActionResult> Callback([FromQuery] string code, [FromQuery] string state)
         {
-            var baseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5500/projetocasadamulher/telas";
-            var urlBase = baseUrl.TrimEnd('/');
+            var urlBase = _frontendUrlService.ObterBaseUrl()
+                ?? "http://localhost:5500/projetocasadamulher/telas";
             
             if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
             {

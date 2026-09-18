@@ -18,6 +18,6 @@ public sealed record ResultadoRedefinicaoSenhaEmail(
         return new ResultadoRedefinicaoSenhaEmail(
             false,
             "NaoConfigurado",
-            "Para enviar redefinição de senha por e-mail, configure Frontend:BaseUrl.");
+            "Para enviar redefinição de senha por e-mail, configure PORTAL_EQP_BASE_URL ou Frontend:BaseUrl.");
     }
 }

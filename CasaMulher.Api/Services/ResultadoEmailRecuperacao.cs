@@ -20,7 +20,7 @@ public sealed record ResultadoEmailRecuperacao(
         return new ResultadoEmailRecuperacao(
             false,
             "Não enviado",
-            "Para enviar confirmação de e-mail de recuperação, configure Frontend:BaseUrl.",
+            "Para enviar confirmação de e-mail de recuperação, configure PORTAL_EQP_BASE_URL ou Frontend:BaseUrl.",
             null);
     }
 }

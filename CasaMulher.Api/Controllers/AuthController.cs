@@ -48,6 +48,7 @@ public partial class AuthController : ControllerBase
     private readonly WebAuthnEnvironmentInfo _webAuthn;
     private readonly SecuritySnapshotPersistenceService _securitySnapshot;
     private readonly IEmailService _emailService;
+    private readonly IFrontendUrlService _frontendUrlService;
 
     public AuthController(
         AppDbContext dbContext,
@@ -64,7 +65,8 @@ public partial class AuthController : ControllerBase
         IFido2 fido2,
         WebAuthnEnvironmentInfo webAuthn,
         SecuritySnapshotPersistenceService securitySnapshot,
-        IEmailService emailService)
+        IEmailService emailService,
+        IFrontendUrlService frontendUrlService)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -81,6 +83,7 @@ public partial class AuthController : ControllerBase
         _webAuthn = webAuthn;
         _securitySnapshot = securitySnapshot;
         _emailService = emailService;
+        _frontendUrlService = frontendUrlService;
     }
 
     [AllowAnonymous]
@@ -219,9 +222,8 @@ public partial class AuthController : ControllerBase
 
     private async Task EnviarEmailContaCriadaAsync(ApplicationUser usuario)
     {
-        var frontendBaseUrl = _configuration["Frontend:BaseUrl"];
-        var baseUrl = !string.IsNullOrWhiteSpace(frontendBaseUrl) ? frontendBaseUrl.TrimEnd('/') : "http://localhost:5500";
-        var linkSeguranca = $"{baseUrl}/seguranca.html";
+        var linkSeguranca = _frontendUrlService.CriarLink("seguranca.html")
+            ?? "http://localhost:5500/projetocasadamulher/telas/seguranca.html";
 
         var nome = WebUtility.HtmlEncode(usuario.NomeCompleto);
         var perfil = WebUtility.HtmlEncode(usuario.Perfil);
@@ -263,7 +265,11 @@ public partial class AuthController : ControllerBase
 
         try
         {
-            await _emailService.EnviarAsync(usuario.Email!, "Sua conta foi criada - Sistema Casa da Mulher", corpoHtml, "ContaCriada");
+            _ = await _emailService.EnviarAsync(
+                usuario.Email!,
+                "Sua conta foi criada - Sistema Casa da Mulher",
+                corpoHtml,
+                "ContaCriada");
         }
         catch
         {

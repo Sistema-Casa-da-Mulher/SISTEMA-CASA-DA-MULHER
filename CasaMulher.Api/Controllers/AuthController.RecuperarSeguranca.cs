@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using CasaMulher.Api.Models;
+using CasaMulher.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -104,6 +105,16 @@ public partial class AuthController
             emailDestino = user.Email;
         }
 
+        var linkBase = _frontendUrlService.CriarLink("confirmar-recuperacao-seguranca.html");
+
+        if (string.IsNullOrWhiteSpace(linkBase))
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                mensagem = "A URL pública do portal não está configurada. Procure a coordenação."
+            });
+        }
+
         var token = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
         var tokenHash = HashToken(token);
 
@@ -121,9 +132,7 @@ public partial class AuthController
         _dbContext.RecuperacaoSegurancaTokens.Add(recuperacao);
         await _dbContext.SaveChangesAsync();
 
-        var linkRelativo = $"confirmar-recuperacao-seguranca.html?token={Uri.EscapeDataString(token)}";
-        var baseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5500";
-        var linkAbsoluto = $"{baseUrl.TrimEnd('/')}/{linkRelativo}";
+        var linkAbsoluto = $"{linkBase}?token={Uri.EscapeDataString(token)}";
 
         var corpoHtml = $"""
             <p>Olá, {WebUtility.HtmlEncode(user.NomeCompleto)}.</p>
@@ -134,9 +143,41 @@ public partial class AuthController
             <p>Se você não solicitou isso, ignore este e-mail e avise a coordenação.</p>
             """;
 
-        await _emailService.EnviarAsync(emailDestino, "Recuperação dos métodos de segurança - Sistema Casa da Mulher", corpoHtml, "RecuperacaoSeguranca");
+        ResultadoEnvioEmail resultadoEnvio;
+
+        try
+        {
+            resultadoEnvio = await _emailService.EnviarAsync(
+                emailDestino,
+                "Recuperação dos métodos de segurança - Sistema Casa da Mulher",
+                corpoHtml,
+                "RecuperacaoSeguranca");
+        }
+        catch
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                mensagem = "Não foi possível enviar o e-mail de recuperação. Tente novamente ou procure a coordenação."
+            });
+        }
 
         await _auditoriaService.RegistrarAsync("SEGURANCA_RECUPERACAO_SOLICITADA", "ApplicationUser", user.Id, $"Recuperação de segurança solicitada via e-mail {request.DestinoEmail}");
+
+        if (!resultadoEnvio.Enviado)
+        {
+            await _auditoriaService.RegistrarAsync(
+                "SEGURANCA_RECUPERACAO_EMAIL_SIMULADO",
+                "ApplicationUser",
+                user.Id,
+                $"Envio simulado para {MascararEmail(emailDestino)}; nenhum e-mail real foi enviado.");
+
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                mensagem = "O serviço de e-mail está em modo simulado. Nenhum e-mail real foi enviado; procure a coordenação.",
+                statusEmail = resultadoEnvio.Status
+            });
+        }
+
         await _auditoriaService.RegistrarAsync("SEGURANCA_RECUPERACAO_EMAIL_ENVIADO", "ApplicationUser", user.Id, $"E-mail de recuperação de segurança enviado para {MascararEmail(emailDestino)}");
 
         return Ok(new { mensagem = "Enviamos um link de recuperação para o e-mail selecionado." });

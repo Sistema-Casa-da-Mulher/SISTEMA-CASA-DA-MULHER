@@ -22,7 +22,7 @@ public class ConvitesFuncionariosController : ControllerBase
     private readonly IFuncionarioIdentificadorService _identificadorService;
     private readonly IAuditoriaService _auditoriaService;
     private readonly IEmailService _emailService;
-    private readonly IConfiguration _configuration;
+    private readonly IFrontendUrlService _frontendUrlService;
     private readonly IContextoAcessoEfetivoService _contextoAcesso;
 
     public ConvitesFuncionariosController(
@@ -32,7 +32,7 @@ public class ConvitesFuncionariosController : ControllerBase
         IFuncionarioIdentificadorService identificadorService,
         IAuditoriaService auditoriaService,
         IEmailService emailService,
-        IConfiguration configuration,
+        IFrontendUrlService frontendUrlService,
         IContextoAcessoEfetivoService contextoAcesso)
     {
         _dbContext = dbContext;
@@ -41,7 +41,7 @@ public class ConvitesFuncionariosController : ControllerBase
         _identificadorService = identificadorService;
         _auditoriaService = auditoriaService;
         _emailService = emailService;
-        _configuration = configuration;
+        _frontendUrlService = frontendUrlService;
         _contextoAcesso = contextoAcesso;
     }
 
@@ -324,44 +324,34 @@ public class ConvitesFuncionariosController : ControllerBase
 
         try
         {
-            await _emailService.EnviarAsync(convite.Email, assunto, corpoHtml, "ConviteFuncionario");
-            var status = await ObterUltimoStatusEmailAsync(convite.Email, assunto, "ConviteFuncionario");
+            var resultadoEnvio = await _emailService.EnviarAsync(
+                convite.Email,
+                assunto,
+                corpoHtml,
+                "ConviteFuncionario");
 
-            return new ResultadoEmailConvite(true, status ?? "Enviado", null);
+            if (!resultadoEnvio.Enviado)
+            {
+                return new ResultadoEmailConvite(
+                    false,
+                    resultadoEnvio.Status,
+                    "Convite criado, mas o provedor de e-mail está em modo simulado. Nenhum e-mail real foi enviado; use o link manual ou configure SMTP.");
+            }
+
+            return new ResultadoEmailConvite(true, resultadoEnvio.Status, null);
         }
         catch
         {
-            var status = await ObterUltimoStatusEmailAsync(convite.Email, assunto, "ConviteFuncionario") ?? "Falhou";
-
             return new ResultadoEmailConvite(
                 false,
-                status,
+                "Falhou",
                 "Convite criado, mas não foi possível enviar o e-mail. Use o link manual como alternativa.");
         }
     }
 
-    private async Task<string?> ObterUltimoStatusEmailAsync(string destinatario, string assunto, string tipo)
-    {
-        return await _dbContext.EmailEventos
-            .Where(evento =>
-                evento.Destinatario == destinatario
-                && evento.Assunto == assunto
-                && evento.Tipo == tipo)
-            .OrderByDescending(evento => evento.CriadoEm)
-            .Select(evento => evento.Status)
-            .FirstOrDefaultAsync();
-    }
-
     private string? GerarLinkCadastroAbsoluto(string linkCadastroRelativo)
     {
-        var frontendBaseUrl = _configuration["Frontend:BaseUrl"];
-
-        if (string.IsNullOrWhiteSpace(frontendBaseUrl))
-        {
-            return null;
-        }
-
-        return $"{frontendBaseUrl.TrimEnd('/')}/{linkCadastroRelativo}";
+        return _frontendUrlService.CriarLink(linkCadastroRelativo);
     }
 
     private static string? ObterAvisoEmailAlias(string email)
@@ -420,7 +410,7 @@ public class ConvitesFuncionariosController : ControllerBase
             return new ResultadoEmailConvite(
                 false,
                 "NaoConfigurado",
-                "Para enviar convite por e-mail, configure Frontend:BaseUrl.");
+                "Para enviar convite por e-mail, configure PORTAL_EQP_BASE_URL ou Frontend:BaseUrl.");
         }
     }
 }

@@ -14,7 +14,7 @@ public class FakeEmailService : IEmailService
         _logger = logger;
     }
 
-    public async Task EnviarAsync(string destinatario, string assunto, string corpoHtml, string tipo)
+    public async Task<ResultadoEnvioEmail> EnviarAsync(string destinatario, string assunto, string corpoHtml, string tipo)
     {
         _logger.LogInformation(
             "E-mail simulado para {Destinatario}. Tipo: {Tipo}. Assunto: {Assunto}.",
@@ -32,5 +32,6 @@ public class FakeEmailService : IEmailService
         });
 
         await _dbContext.SaveChangesAsync();
+        return ResultadoEnvioEmail.Simulado();
     }
 }

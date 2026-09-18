@@ -237,7 +237,7 @@ builder.Services.AddCors(options =>
             return;
         }
 
-        var frontendBaseUrl = builder.Configuration["Frontend:BaseUrl"];
+        var frontendBaseUrl = new FrontendUrlService(builder.Configuration).ObterBaseUrl();
 
         if (!string.IsNullOrWhiteSpace(frontendBaseUrl))
         {
@@ -262,6 +262,7 @@ builder.Services.AddScoped<CasaMulher.Api.Services.IGitHubUsuarioService, CasaMu
 builder.Services.AddScoped<CasaMulher.Api.Services.IGitHubForkIdeService, CasaMulher.Api.Services.GitHubForkIdeService>();
 builder.Services.AddScoped<CasaMulher.Api.Services.IEquipeEnvioPrService, CasaMulher.Api.Services.EquipeEnvioPrService>();
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IFrontendUrlService, FrontendUrlService>();
 builder.Services.AddScoped<IConviteCodigoService, ConviteCodigoService>();
 builder.Services.AddScoped<IFuncionarioIdentificadorService, GeradorIdentificadorFuncionarioService>();
 builder.Services.AddScoped<IMasterUserService, MasterUserService>();

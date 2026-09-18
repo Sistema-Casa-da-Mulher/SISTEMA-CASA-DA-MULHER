@@ -88,6 +88,25 @@ Jwt__Key=CHAVE_FORTE_E_EXCLUSIVA
 Convites__HashSecret=CHAVE_FORTE_E_EXCLUSIVA
 ```
 
+`PORTAL_EQP_BASE_URL` e usada para montar os links absolutos enviados nos convites, na redefinicao de senha, na confirmacao do e-mail de recuperacao e na recuperacao dos metodos de seguranca. Como alternativas, a aplicacao aceita `RENDER_EXTERNAL_URL` (fornecida pelo Render quando disponivel) e `Frontend__BaseUrl`, nesta ordem. Informe somente a origem publica, sem barra no final.
+
+### Envio real de e-mail
+
+O ambiente `Staging` usa `Email__Provider=Fake` por padrao. Nesse modo o evento fica registrado como `Simulado`, mas nenhuma mensagem real sai do servidor. Para habilitar o envio real no Render, configure:
+
+```text
+Email__Provider=Smtp
+Email__Smtp__Host=HOST_DO_PROVEDOR
+Email__Smtp__Port=587
+Email__Smtp__EnableSsl=true
+Email__Smtp__FromEmail=REMETENTE_VERIFICADO
+Email__Smtp__FromName=Casa da Mulher
+Email__Smtp__User=USUARIO_SMTP
+Email__Smtp__Password=SENHA_OU_CHAVE_SMTP
+```
+
+O remetente precisa ser aceito pelo provedor SMTP. Depois de salvar as variaveis, reinicie ou faca um novo deploy e gere um convite de teste. A tela so informa `E-mail enviado com sucesso` quando o provedor confirma o envio; com `Fake`, ela mostra que o envio foi apenas simulado e mantem o link manual disponivel.
+
 Opcional, se quiser permitir leitura com token separado:
 
 ```text

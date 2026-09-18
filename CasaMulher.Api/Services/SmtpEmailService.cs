@@ -21,12 +21,13 @@ public class SmtpEmailService : IEmailService
         _logger = logger;
     }
 
-    public async Task EnviarAsync(string destinatario, string assunto, string corpoHtml, string tipo)
+    public async Task<ResultadoEnvioEmail> EnviarAsync(string destinatario, string assunto, string corpoHtml, string tipo)
     {
         try
         {
             await EnviarSmtpAsync(destinatario, assunto, corpoHtml);
             await RegistrarEventoAsync(destinatario, assunto, tipo, "Enviado", null);
+            return ResultadoEnvioEmail.EnviadoComSucesso();
         }
         catch (Exception ex)
         {

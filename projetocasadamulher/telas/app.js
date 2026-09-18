@@ -1038,6 +1038,7 @@ async function setupConvites() {
 
         setMessage(mensagem, "Gerando convite...", "info");
         disableSubmit(form, true);
+        let conviteCriado = false;
 
         const dados = {
             nomeCompleto: document.getElementById("conviteNome").value.trim(),
@@ -1066,6 +1067,7 @@ async function setupConvites() {
             }
 
             const resultado = await response.json();
+            conviteCriado = true;
             ultimoCodigo = resultado.codigoCadastro;
             ultimoLink = resultado.linkCadastro;
             const avisoLinkLocal = getAvisoLinkLocal(ultimoLink);
@@ -1076,9 +1078,11 @@ async function setupConvites() {
             document.getElementById("linkGerado").textContent = ultimoLink || "-";
 
             let statusColor = "#388E3C";
-            let statusText = "E-mail enviado com sucesso." + avisoAlias;
+            let statusText = dados.enviarEmail
+                ? "E-mail enviado com sucesso." + avisoAlias
+                : "Envio por e-mail não solicitado." + avisoAlias;
 
-            if (resultado.emailEnviado === false) {
+            if (dados.enviarEmail && resultado.emailEnviado === false) {
                 statusColor = "#C62828";
                 statusText = resultado.avisoEmail || resultado.statusEmail || "Falha no envio de e-mail.";
                 statusText += avisoAlias;
@@ -1088,12 +1092,10 @@ async function setupConvites() {
             emailStatusElement.textContent = statusText;
             emailStatusElement.style.color = statusColor;
 
-            divConviteGerado.classList.remove("hidden");
+            resultPanel.classList.remove("hidden");
             form.reset();
             setMessage(mensagem, avisoLinkLocal || "Convite gerado com sucesso.", avisoLinkLocal ? "info" : "success");
 
-            // Removido mensagemSucesso indefinida
-            form.reset();
             if (convitePerfil) {
                 convitePerfil.dispatchEvent(new Event("change"));
             }
@@ -1102,8 +1104,15 @@ async function setupConvites() {
             avisoEmailAlias.classList.add("hidden");
             convitesPaginaAtual = 1;
             await carregarConvites();
-        } catch {
-            setMessage(mensagem, "Não foi possível conectar à API.", "error");
+        } catch (error) {
+            console.error("Falha ao gerar ou exibir convite:", error);
+            setMessage(
+                mensagem,
+                conviteCriado
+                    ? "O convite foi criado, mas ocorreu um erro ao exibir o resultado. Atualize a lista de convites."
+                    : "Não foi possível conectar à API.",
+                "error"
+            );
         } finally {
             disableSubmit(form, false);
         }
