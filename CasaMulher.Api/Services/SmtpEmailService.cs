@@ -7,6 +7,10 @@ namespace CasaMulher.Api.Services;
 
 public class SmtpEmailService : IEmailService
 {
+    private const int TimeoutPadraoSegundos = 20;
+    private const int TimeoutMinimoSegundos = 5;
+    private const int TimeoutMaximoSegundos = 60;
+
     private readonly AppDbContext _dbContext;
     private readonly IConfiguration _configuration;
     private readonly ILogger<SmtpEmailService> _logger;
@@ -53,6 +57,10 @@ public class SmtpEmailService : IEmailService
         var enableSsl = _configuration.GetValue("Email:Smtp:EnableSsl", true);
         var user = _configuration["Email:Smtp:User"];
         var password = _configuration["Email:Smtp:Password"];
+        var timeoutSegundos = Math.Clamp(
+            _configuration.GetValue("Email:Smtp:TimeoutSeconds", TimeoutPadraoSegundos),
+            TimeoutMinimoSegundos,
+            TimeoutMaximoSegundos);
 
         using var message = new MailMessage
         {
@@ -66,7 +74,8 @@ public class SmtpEmailService : IEmailService
 #pragma warning disable SYSLIB0014
         using var client = new SmtpClient(host, port)
         {
-            EnableSsl = enableSsl
+            EnableSsl = enableSsl,
+            Timeout = checked(timeoutSegundos * 1000)
         };
 #pragma warning restore SYSLIB0014
 
@@ -80,7 +89,18 @@ public class SmtpEmailService : IEmailService
             client.Credentials = new NetworkCredential(user, password);
         }
 
-        await client.SendMailAsync(message);
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSegundos));
+
+        try
+        {
+            await client.SendMailAsync(message, timeoutCts.Token);
+        }
+        catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"O servidor SMTP {host}:{port} não respondeu em até {timeoutSegundos} segundos.",
+                ex);
+        }
     }
 
     private async Task RegistrarEventoAsync(string destinatario, string assunto, string tipo, string status, string? erro)

@@ -945,17 +945,17 @@ async function setupConvites() {
                 mensagemElement: mensagem
             });
 
-            if (response.status === 401) return;
+            if (response.status === 401) return false;
 
             if (response.status === 403) {
                 conteudo.classList.add("hidden");
                 restrito.classList.remove("hidden");
-                return;
+                return false;
             }
 
             if (!response.ok) {
                 lista.innerHTML = "<div class=\"soft-empty-state\">Não foi possível carregar os convites.</div>";
-                return;
+                return false;
             }
 
             convitesCache = await response.json();
@@ -968,8 +968,10 @@ async function setupConvites() {
             }
 
             renderizarConvites();
+            return true;
         } catch {
             lista.innerHTML = "<div class=\"soft-empty-state\">Não foi possível conectar à API.</div>";
+            return false;
         }
     }
 
@@ -1039,6 +1041,9 @@ async function setupConvites() {
         setMessage(mensagem, "Gerando convite...", "info");
         disableSubmit(form, true);
         let conviteCriado = false;
+        const idsAntesDoEnvio = new Set(convitesCache.map(convite => convite.id));
+        const timeoutController = new AbortController();
+        const timeoutId = window.setTimeout(() => timeoutController.abort(), 35000);
 
         const dados = {
             nomeCompleto: document.getElementById("conviteNome").value.trim(),
@@ -1058,6 +1063,7 @@ async function setupConvites() {
                 method: "POST",
                 headers: getAuthHeaders(true),
                 body: JSON.stringify(dados),
+                signal: timeoutController.signal,
                 mensagemElement: mensagem
             });
 
@@ -1106,14 +1112,25 @@ async function setupConvites() {
             await carregarConvites();
         } catch (error) {
             console.error("Falha ao gerar ou exibir convite:", error);
+
+            const listaAtualizada = await carregarConvites();
+            const conviteEncontrado = listaAtualizada
+                ? convitesCache.find(convite =>
+                    !idsAntesDoEnvio.has(convite.id)
+                    && convite.email?.toLowerCase() === email.toLowerCase())
+                : null;
+
             setMessage(
                 mensagem,
-                conviteCriado
+                conviteEncontrado
+                    ? `O convite ${conviteEncontrado.identificadorFuncionario || ""} foi criado, mas o envio do e-mail não foi confirmado. Use o link manual ou tente novamente após corrigir o provedor.`
+                    : conviteCriado
                     ? "O convite foi criado, mas ocorreu um erro ao exibir o resultado. Atualize a lista de convites."
-                    : "Não foi possível conectar à API.",
+                    : error?.message || "Não foi possível conectar à API.",
                 "error"
             );
         } finally {
+            window.clearTimeout(timeoutId);
             disableSubmit(form, false);
         }
     }

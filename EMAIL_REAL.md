@@ -129,3 +129,16 @@ dotnet user-secrets set "Email:Smtp:FromName" "Casa da Mulher"
 ```
 
 Brevo ou outro provedor transacional e mais adequado que conta pessoal para uso continuo.
+
+## Brevo no Render gratuito
+
+O Render gratuito bloqueia trafego de saida nas portas SMTP 25, 465 e 587. Para usar o relay SMTP da Brevo nesse plano, configure:
+
+```text
+Email__Smtp__Host=smtp-relay.brevo.com
+Email__Smtp__Port=2525
+Email__Smtp__EnableSsl=false
+Email__Smtp__TimeoutSeconds=20
+```
+
+A porta 2525 e a alternativa indicada pela Brevo quando a hospedagem bloqueia a porta 587. O limite de tempo evita que a criacao do convite fique aguardando indefinidamente quando o provedor SMTP nao puder ser alcancado.

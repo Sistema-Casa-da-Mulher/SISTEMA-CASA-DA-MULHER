@@ -257,9 +257,14 @@
 
         try {
             response = await fetch(requestUrl, fetchOptions);
-        } catch {
-            mostrarMensagem(mensagemElement, "Não foi possível conectar à API.", "error");
-            throw new Error("Não foi possível conectar à API.");
+        } catch (error) {
+            const tempoEsgotado = error?.name === "AbortError";
+            const textoErro = tempoEsgotado
+                ? "A API demorou demais para responder. Confira a lista antes de tentar novamente."
+                : "Não foi possível conectar à API.";
+
+            mostrarMensagem(mensagemElement, textoErro, "error");
+            throw new Error(textoErro, { cause: error });
         }
 
         if (response.status === 401) {

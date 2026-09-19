@@ -96,14 +96,17 @@ O ambiente `Staging` usa `Email__Provider=Fake` por padrao. Nesse modo o evento 
 
 ```text
 Email__Provider=Smtp
-Email__Smtp__Host=HOST_DO_PROVEDOR
-Email__Smtp__Port=587
-Email__Smtp__EnableSsl=true
+Email__Smtp__Host=smtp-relay.brevo.com
+Email__Smtp__Port=2525
+Email__Smtp__EnableSsl=false
+Email__Smtp__TimeoutSeconds=20
 Email__Smtp__FromEmail=REMETENTE_VERIFICADO
 Email__Smtp__FromName=Casa da Mulher
 Email__Smtp__User=USUARIO_SMTP
 Email__Smtp__Password=SENHA_OU_CHAVE_SMTP
 ```
+
+Serviços gratuitos do Render bloqueiam conexões de saída nas portas SMTP 25, 465 e 587. Para Brevo nesse plano, use a porta alternativa 2525. A configuração acima segue a orientação da Brevo para essa porta. Em instâncias pagas do Render, a porta 587 com `EnableSsl=true` também pode ser usada.
 
 O remetente precisa ser aceito pelo provedor SMTP. Depois de salvar as variaveis, reinicie ou faca um novo deploy e gere um convite de teste. A tela so informa `E-mail enviado com sucesso` quando o provedor confirma o envio; com `Fake`, ela mostra que o envio foi apenas simulado e mantem o link manual disponivel.
 
