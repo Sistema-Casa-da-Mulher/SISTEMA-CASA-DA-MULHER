@@ -507,11 +507,31 @@ if (Directory.Exists(telasPath))
     var telasFileProvider = new PhysicalFileProvider(telasPath);
     app.UseStaticFiles(new StaticFileOptions
     {
-        FileProvider = telasFileProvider
+        FileProvider = telasFileProvider,
+        OnPrepareResponse = context =>
+        {
+            if (context.File.Name.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Context.Response.Headers.CacheControl = "no-store, no-cache, must-revalidate, max-age=0";
+                context.Context.Response.Headers.Pragma = "no-cache";
+                context.Context.Response.Headers.Expires = "0";
+            }
+        }
     });
 }
 
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        if (context.File.Name.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Context.Response.Headers.CacheControl = "no-store, no-cache, must-revalidate, max-age=0";
+            context.Context.Response.Headers.Pragma = "no-cache";
+            context.Context.Response.Headers.Expires = "0";
+        }
+    }
+});
 app.UseRouting();
 app.UseCors("FrontendLocal");
 app.UseRateLimiter();
