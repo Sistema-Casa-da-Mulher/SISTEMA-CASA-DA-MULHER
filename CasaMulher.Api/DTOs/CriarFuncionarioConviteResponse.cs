@@ -27,4 +27,8 @@ public class CriarFuncionarioConviteResponse
     public string? AvisoEmail { get; set; }
 
     public string? AvisoEmailAlias { get; set; }
+
+    public bool SnapshotPersistido { get; set; }
+
+    public string? AvisoSnapshot { get; set; }
 }

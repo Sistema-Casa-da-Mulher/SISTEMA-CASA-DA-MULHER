@@ -21,4 +21,8 @@ public class FuncionarioAdminResponse
     public bool DeveTrocarSenha { get; set; }
 
     public DateTime CriadoEm { get; set; }
+
+    public bool SnapshotPersistido { get; set; }
+
+    public string? AvisoSnapshot { get; set; }
 }

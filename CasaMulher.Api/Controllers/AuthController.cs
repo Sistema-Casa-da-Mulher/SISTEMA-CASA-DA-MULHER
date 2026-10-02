@@ -211,12 +211,21 @@ public partial class AuthController : ControllerBase
         await _dbContext.SaveChangesAsync();
         await transaction.CommitAsync();
 
+        // A conta e o consumo do convite devem ser persistidos antes do e-mail
+        // de confirmação. Caso contrário, um restart restaura um snapshot antigo
+        // depois de o funcionário já ter recebido a confirmação de cadastro.
+        var snapshot = await _securitySnapshot.PersistAsync(
+            "employee_account_created",
+            CancellationToken.None);
+
         await EnviarEmailContaCriadaAsync(usuario);
 
         return Ok(new
         {
             mensagem = "Funcionário cadastrado com sucesso.",
-            identificadorFuncionario = usuario.IdentificadorFuncionario
+            identificadorFuncionario = usuario.IdentificadorFuncionario,
+            snapshotPersistido = snapshot.SnapshotPersistido,
+            avisoSnapshot = snapshot.AvisoSnapshot
         });
     }
 
@@ -452,7 +461,16 @@ public partial class AuthController : ControllerBase
             usuario.Id,
             $"Funcionário {usuario.IdentificadorFuncionario} concluiu redefinição de senha.");
 
-        return Ok(new { mensagem = "Senha redefinida com sucesso." });
+        var snapshot = await _securitySnapshot.PersistAsync(
+            "employee_password_reset",
+            CancellationToken.None);
+
+        return Ok(new
+        {
+            mensagem = "Senha redefinida com sucesso.",
+            snapshotPersistido = snapshot.SnapshotPersistido,
+            avisoSnapshot = snapshot.AvisoSnapshot
+        });
     }
 
     [AllowAnonymous]
@@ -950,7 +968,16 @@ public partial class AuthController : ControllerBase
             usuario.Id,
             $"Funcionário {usuario.IdentificadorFuncionario} concluiu a troca obrigatória de senha.");
 
-        return Ok(new { mensagem = "Senha alterada com sucesso." });
+        var snapshot = await _securitySnapshot.PersistAsync(
+            "employee_required_password_changed",
+            CancellationToken.None);
+
+        return Ok(new
+        {
+            mensagem = "Senha alterada com sucesso.",
+            snapshotPersistido = snapshot.SnapshotPersistido,
+            avisoSnapshot = snapshot.AvisoSnapshot
+        });
     }
 
     // ── Passkey login — iniciar ────────────────────────────────────────────

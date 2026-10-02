@@ -26,7 +26,10 @@ public sealed class HmlDbSnapshotAutoService : BackgroundService
         var intervalMinutes = _configuration.GetValue("HML_DB_SNAPSHOT_INTERVAL_MINUTES", 10);
         var interval = TimeSpan.FromMinutes(intervalMinutes);
         
-        DateTime lastWriteTime = DateTime.MinValue;
+        // Registra o estado inicial antes da primeira espera. Assim, qualquer
+        // alteração feita nos primeiros minutos de vida da aplicação será
+        // detectada no primeiro ciclo, em vez de ser tratada como baseline.
+        var lastWriteTime = ObterUltimaAlteracaoBanco();
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -44,19 +47,11 @@ public sealed class HmlDbSnapshotAutoService : BackgroundService
                 var snapshotService = scope.ServiceProvider.GetRequiredService<HmlDbSnapshotService>();
                 
                 if (!snapshotService.Configured) continue;
-                if (!File.Exists(_storage.DatabasePath)) continue;
-
-                var currentWriteTime = new FileInfo(_storage.DatabasePath).LastWriteTimeUtc;
-                
-                // Primeira execução: apenas registra o estado atual
-                if (lastWriteTime == DateTime.MinValue)
-                {
-                    lastWriteTime = currentWriteTime;
-                    continue;
-                }
+                var currentWriteTime = ObterUltimaAlteracaoBanco();
+                if (currentWriteTime is null) continue;
 
                 // Se o arquivo SQLite foi modificado
-                if (currentWriteTime > lastWriteTime)
+                if (lastWriteTime is null || currentWriteTime > lastWriteTime)
                 {
                     _logger.LogInformation("Mudança detectada no banco SQLite. Iniciando auto-snapshot.");
                     await snapshotService.CreateAndUploadAsync(stoppingToken, "auto_timer");
@@ -68,5 +63,29 @@ public sealed class HmlDbSnapshotAutoService : BackgroundService
                 _logger.LogWarning(ex, "Falha na execução do auto-snapshot (pode ser conflito de geração ou erro de rede).");
             }
         }
+    }
+
+    private DateTime? ObterUltimaAlteracaoBanco()
+    {
+        DateTime? ultimaAlteracao = null;
+        var arquivos = new[]
+        {
+            _storage.DatabasePath,
+            _storage.DatabasePath + "-wal",
+            _storage.DatabasePath + "-journal"
+        };
+
+        foreach (var arquivo in arquivos)
+        {
+            if (!File.Exists(arquivo)) continue;
+
+            var alteracao = new FileInfo(arquivo).LastWriteTimeUtc;
+            if (ultimaAlteracao is null || alteracao > ultimaAlteracao)
+            {
+                ultimaAlteracao = alteracao;
+            }
+        }
+
+        return ultimaAlteracao;
     }
 }

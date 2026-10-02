@@ -22,6 +22,7 @@ public class FuncionariosController : ControllerBase
     private readonly IRedefinicaoSenhaEmailService _redefinicaoSenhaEmailService;
     private readonly IMasterUserService _masterUserService;
     private readonly IContextoAcessoEfetivoService _contextoAcesso;
+    private readonly SecuritySnapshotPersistenceService _securitySnapshot;
 
     public FuncionariosController(
         AppDbContext dbContext,
@@ -30,7 +31,8 @@ public class FuncionariosController : ControllerBase
         IAuditoriaService auditoriaService,
         IRedefinicaoSenhaEmailService redefinicaoSenhaEmailService,
         IMasterUserService masterUserService,
-        IContextoAcessoEfetivoService contextoAcesso)
+        IContextoAcessoEfetivoService contextoAcesso,
+        SecuritySnapshotPersistenceService securitySnapshot)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -39,6 +41,7 @@ public class FuncionariosController : ControllerBase
         _redefinicaoSenhaEmailService = redefinicaoSenhaEmailService;
         _masterUserService = masterUserService;
         _contextoAcesso = contextoAcesso;
+        _securitySnapshot = securitySnapshot;
     }
 
     [HttpGet]
@@ -120,7 +123,7 @@ public class FuncionariosController : ControllerBase
             funcionario.Id,
             $"Desativou o funcionário {funcionario.IdentificadorFuncionario} ({funcionario.Email}).");
 
-        return Ok(MapearFuncionario(funcionario));
+        return Ok(await PersistirEMapearFuncionarioAsync(funcionario, "employee_disabled"));
     }
 
     [HttpPatch("{id}/reativar")]
@@ -156,7 +159,7 @@ public class FuncionariosController : ControllerBase
             funcionario.Id,
             $"Reativou o funcionário {funcionario.IdentificadorFuncionario} ({funcionario.Email}).");
 
-        return Ok(MapearFuncionario(funcionario));
+        return Ok(await PersistirEMapearFuncionarioAsync(funcionario, "employee_reactivated"));
     }
 
     [HttpPatch("{id}/alterar-perfil")]
@@ -215,7 +218,7 @@ public class FuncionariosController : ControllerBase
             funcionario.Id,
             $"Alterou perfil de {funcionario.IdentificadorFuncionario} de {perfilAnterior} para {novoPerfil}.");
 
-        return Ok(MapearFuncionario(funcionario));
+        return Ok(await PersistirEMapearFuncionarioAsync(funcionario, "employee_profile_changed"));
     }
 
     [HttpPost("{id}/resetar-senha")]
@@ -305,7 +308,29 @@ public class FuncionariosController : ControllerBase
             funcionario.Id,
             $"Redefiniu o autenticador 2FA do funcionário {funcionario.IdentificadorFuncionario} ({funcionario.Email}).");
 
-        return Ok(new { mensagem = "Autenticador redefinido com sucesso." });
+        var snapshot = await _securitySnapshot.PersistAsync(
+            "employee_2fa_reset_by_admin",
+            CancellationToken.None);
+
+        return Ok(new
+        {
+            mensagem = "Autenticador redefinido com sucesso.",
+            snapshotPersistido = snapshot.SnapshotPersistido,
+            avisoSnapshot = snapshot.AvisoSnapshot
+        });
+    }
+
+    private async Task<FuncionarioAdminResponse> PersistirEMapearFuncionarioAsync(
+        ApplicationUser funcionario,
+        string origemSnapshot)
+    {
+        var snapshot = await _securitySnapshot.PersistAsync(
+            origemSnapshot,
+            CancellationToken.None);
+        var response = MapearFuncionario(funcionario);
+        response.SnapshotPersistido = snapshot.SnapshotPersistido;
+        response.AvisoSnapshot = snapshot.AvisoSnapshot;
+        return response;
     }
 
     private static FuncionarioAdminResponse MapearFuncionario(ApplicationUser funcionario)

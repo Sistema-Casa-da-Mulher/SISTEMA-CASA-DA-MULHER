@@ -23,4 +23,8 @@ public class FuncionarioConviteResponse
     public DateTime? UsadoEm { get; set; }
 
     public DateTime? CanceladoEm { get; set; }
+
+    public bool SnapshotPersistido { get; set; }
+
+    public string? AvisoSnapshot { get; set; }
 }

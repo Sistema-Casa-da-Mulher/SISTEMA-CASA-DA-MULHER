@@ -24,6 +24,7 @@ public class ConvitesFuncionariosController : ControllerBase
     private readonly IEmailService _emailService;
     private readonly IFrontendUrlService _frontendUrlService;
     private readonly IContextoAcessoEfetivoService _contextoAcesso;
+    private readonly SecuritySnapshotPersistenceService _securitySnapshot;
 
     public ConvitesFuncionariosController(
         AppDbContext dbContext,
@@ -33,7 +34,8 @@ public class ConvitesFuncionariosController : ControllerBase
         IAuditoriaService auditoriaService,
         IEmailService emailService,
         IFrontendUrlService frontendUrlService,
-        IContextoAcessoEfetivoService contextoAcesso)
+        IContextoAcessoEfetivoService contextoAcesso,
+        SecuritySnapshotPersistenceService securitySnapshot)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -43,6 +45,7 @@ public class ConvitesFuncionariosController : ControllerBase
         _emailService = emailService;
         _frontendUrlService = frontendUrlService;
         _contextoAcesso = contextoAcesso;
+        _securitySnapshot = securitySnapshot;
     }
 
     [HttpGet]
@@ -152,6 +155,13 @@ public class ConvitesFuncionariosController : ControllerBase
         _dbContext.FuncionariosConvites.Add(convite);
         await _dbContext.SaveChangesAsync();
 
+        // O convite precisa sobreviver a um restart antes que o link seja
+        // enviado ao funcionário. Não vincular ao cancelamento da requisição:
+        // o commit no SQLite já aconteceu e precisa ser preservado.
+        var snapshot = await _securitySnapshot.PersistAsync(
+            "employee_invitation_created",
+            CancellationToken.None);
+
         var linkCadastroRelativo = GerarLinkCadastroRelativo(convite.Email, codigoCadastro);
         var linkCadastroAbsoluto = GerarLinkCadastroAbsoluto(linkCadastroRelativo);
         var linkCadastro = linkCadastroAbsoluto ?? linkCadastroRelativo;
@@ -172,7 +182,9 @@ public class ConvitesFuncionariosController : ControllerBase
             EmailEnviado = resultadoEmail.EmailEnviado,
             StatusEmail = resultadoEmail.StatusEmail,
             AvisoEmail = resultadoEmail.AvisoEmail,
-            AvisoEmailAlias = ObterAvisoEmailAlias(convite.Email)
+            AvisoEmailAlias = ObterAvisoEmailAlias(convite.Email),
+            SnapshotPersistido = snapshot.SnapshotPersistido,
+            AvisoSnapshot = snapshot.AvisoSnapshot
         };
 
         var descricaoAuditoria = request.EnviarEmail
@@ -223,7 +235,14 @@ public class ConvitesFuncionariosController : ControllerBase
             convite.Id.ToString(),
             $"Cancelou convite para {convite.Email} com perfil {convite.Perfil}.");
 
-        return Ok(MapearConvite(convite, DateTime.UtcNow));
+        var snapshot = await _securitySnapshot.PersistAsync(
+            "employee_invitation_cancelled",
+            CancellationToken.None);
+        var response = MapearConvite(convite, DateTime.UtcNow);
+        response.SnapshotPersistido = snapshot.SnapshotPersistido;
+        response.AvisoSnapshot = snapshot.AvisoSnapshot;
+
+        return Ok(response);
     }
 
     private async Task<bool> ExisteConvitePendenteParaEmail(string email)

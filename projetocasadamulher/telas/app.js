@@ -529,12 +529,19 @@ function setupCadastro() {
                 sessionStorage.setItem("ultimoIdentificadorFuncionario", identificador);
             }
 
-            setMessage(mensagem, textoSucesso, "success");
+            const avisoSnapshot = resultado.avisoSnapshot;
+            setMessage(
+                mensagem,
+                avisoSnapshot ? `${textoSucesso} ${avisoSnapshot}` : textoSucesso,
+                avisoSnapshot ? "error" : "success"
+            );
             form.reset();
 
-            setTimeout(function () {
-                window.location.href = "index.html";
-            }, 3500);
+            if (!avisoSnapshot) {
+                setTimeout(function () {
+                    window.location.href = "index.html";
+                }, 3500);
+            }
         } catch {
             setMessage(mensagem, "Não foi possível conectar à API.", "error");
         } finally {
@@ -1043,7 +1050,7 @@ async function setupConvites() {
         let conviteCriado = false;
         const idsAntesDoEnvio = new Set(convitesCache.map(convite => convite.id));
         const timeoutController = new AbortController();
-        const timeoutId = window.setTimeout(() => timeoutController.abort(), 35000);
+        const timeoutId = window.setTimeout(() => timeoutController.abort(), 60000);
 
         const dados = {
             nomeCompleto: document.getElementById("conviteNome").value.trim(),
@@ -1100,7 +1107,12 @@ async function setupConvites() {
 
             resultPanel.classList.remove("hidden");
             form.reset();
-            setMessage(mensagem, avisoLinkLocal || "Convite gerado com sucesso.", avisoLinkLocal ? "info" : "success");
+            const avisoSnapshot = resultado.avisoSnapshot;
+            setMessage(
+                mensagem,
+                avisoSnapshot || avisoLinkLocal || "Convite gerado com sucesso.",
+                avisoSnapshot ? "error" : (avisoLinkLocal ? "info" : "success")
+            );
 
             if (convitePerfil) {
                 convitePerfil.dispatchEvent(new Event("change"));
@@ -1170,7 +1182,12 @@ async function setupConvites() {
                 return;
             }
 
-            setMessage(mensagem, "Convite cancelado.", "success");
+            const resultado = await response.json();
+            setMessage(
+                mensagem,
+                resultado.avisoSnapshot || "Convite cancelado.",
+                resultado.avisoSnapshot ? "error" : "success"
+            );
             await carregarConvites();
         } catch {
             setMessage(mensagem, "Não foi possível conectar à API.", "error");
@@ -1231,16 +1248,23 @@ async function setupTrocarSenha() {
                 return;
             }
 
+            const resultado = await response.json();
             const usuarioAtualizado = Object.assign(CasaMulherAuth.getUsuario(), {
                 deveTrocarSenha: false
             });
 
             CasaMulherAuth.salvarUsuario(usuarioAtualizado);
-            setMessage(mensagem, "Senha trocada com sucesso.", "success");
+            setMessage(
+                mensagem,
+                resultado.avisoSnapshot || "Senha trocada com sucesso.",
+                resultado.avisoSnapshot ? "error" : "success"
+            );
 
-            setTimeout(function () {
-                redirectAfterLogin(usuarioAtualizado);
-            }, 700);
+            if (!resultado.avisoSnapshot) {
+                setTimeout(function () {
+                    redirectAfterLogin(usuarioAtualizado);
+                }, 700);
+            }
         } catch {
             setMessage(mensagem, "Não foi possível conectar à API.", "error");
         } finally {
@@ -1312,12 +1336,20 @@ function setupRedefinirSenha() {
             }
 
             const resultado = await response.json();
-            sessionStorage.setItem("mensagemLogin", resultado.mensagem || "Senha redefinida com sucesso. Entre com a nova senha.");
-            setMessage(mensagem, resultado.mensagem || "Senha redefinida com sucesso.", "success");
+            if (!resultado.avisoSnapshot) {
+                sessionStorage.setItem("mensagemLogin", resultado.mensagem || "Senha redefinida com sucesso. Entre com a nova senha.");
+            }
+            setMessage(
+                mensagem,
+                resultado.avisoSnapshot || resultado.mensagem || "Senha redefinida com sucesso.",
+                resultado.avisoSnapshot ? "error" : "success"
+            );
 
-            setTimeout(function () {
-                window.location.href = "index.html";
-            }, 1000);
+            if (!resultado.avisoSnapshot) {
+                setTimeout(function () {
+                    window.location.href = "index.html";
+                }, 1000);
+            }
         } catch {
             setMessage(mensagem, "Não foi possível conectar à API.", "error");
         } finally {
@@ -1646,7 +1678,12 @@ async function setupFuncionarios() {
             return;
         }
 
-        setMessage(mensagem, "Perfil de acesso alterado.", "success");
+        const resultado = await response.json();
+        setMessage(
+            mensagem,
+            resultado.avisoSnapshot || "Perfil de acesso alterado.",
+            resultado.avisoSnapshot ? "error" : "success"
+        );
         await carregarFuncionarios();
     });
 
@@ -1702,12 +1739,14 @@ async function setupFuncionarios() {
                 mensagemSucesso = "Aplicativo autenticador redefinido com sucesso.";
             }
 
-            const tipoMensagem = action === "resetar-senha"
+            const tipoMensagem = resultado.avisoSnapshot
+                ? "error"
+                : action === "resetar-senha"
                 && (resultado.statusEmail === "Falhou" || resultado.statusEmail === "NaoConfigurado")
                 ? "info"
                 : "success";
 
-            setMessage(mensagem, mensagemSucesso, tipoMensagem);
+            setMessage(mensagem, resultado.avisoSnapshot || mensagemSucesso, tipoMensagem);
             await carregarFuncionarios();
         } catch {
             setMessage(mensagem, "Não foi possível conectar à API.", "error");
