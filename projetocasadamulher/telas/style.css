@@ -3147,46 +3147,49 @@ dd.responsavel-meta {
 }
 
 
-/* Termo de Confidencialidade e Proteção de Dados */
-.termo-box {
+/* --- Termo de Confidencialidade e Proteção de Dados (tema soft) --- */
+.soft-auth-shell.termo-shell {
     max-width: 760px;
+}
+
+.termo-card {
     text-align: left;
 }
 
-.termo-box .auth-title,
-.termo-box .auth-subtitle {
+.termo-card .soft-auth-logo,
+.termo-card .soft-auth-title,
+.termo-card .soft-auth-subtitle {
     text-align: center;
 }
 
 .termo-identificacao {
-    margin: 0 0 16px;
-    color: #40505f;
-    font-size: 0.9rem;
-    font-weight: 650;
-    text-align: center;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
 }
 
 .termo-resumo {
     margin-bottom: 20px;
-    padding: 16px 18px;
-    border: 1px solid #f0c9a8;
-    border-left: 5px solid #c2410c;
-    border-radius: 6px;
-    background: #fff7ed;
+    padding: 18px 20px;
+    border: 1px solid #F1C8D8;
+    border-left: 5px solid #C28FA8;
+    border-radius: 12px;
+    background: #FFF7FA;
 }
 
-.termo-resumo h2,
-.termo-secao-titulo,
-.termo-aceito h2 {
-    margin: 0 0 10px;
-    color: #1f2933;
-    font-size: 1.05rem;
+.termo-resumo .cadastro-resumo-title,
+.termo-secao-titulo {
+    margin-bottom: 10px;
+    text-align: left;
 }
 
 .termo-resumo ul {
     margin: 0;
     padding-left: 20px;
-    line-height: 1.5;
+    color: #6F4A5C;
+    font-size: 0.93rem;
+    line-height: 1.55;
 }
 
 .termo-resumo li + li {
@@ -3196,22 +3199,25 @@ dd.responsavel-meta {
 .termo-texto {
     max-height: 46vh;
     overflow-y: auto;
-    padding: 4px 18px 12px;
-    border: 1px solid #cfd7df;
-    border-radius: 6px;
-    background: #fbfcfd;
-    line-height: 1.55;
-    font-size: 0.93rem;
+    padding: 6px 20px 14px;
+    border: 2px solid #F5E2EC;
+    border-radius: 1.2rem;
+    background: #FFFFFF;
+    color: #5E4452;
+    font-size: 0.92rem;
+    line-height: 1.6;
 }
 
 .termo-texto:focus {
-    outline: 3px solid rgba(24, 114, 107, 0.15);
+    border-color: #E2B8CC;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(210, 140, 165, 0.15);
 }
 
 .termo-texto h3 {
     margin: 16px 0 6px;
+    color: #8B586F;
     font-size: 0.98rem;
-    color: #1f2933;
 }
 
 .termo-texto p {
@@ -3219,115 +3225,114 @@ dd.responsavel-meta {
 }
 
 .termo-aviso-leitura {
-    margin: 8px 0 18px;
-    color: #9a3412;
-    font-size: 0.88rem;
-    font-weight: 650;
+    margin: 10px 0 20px;
+    color: #B47B94;
+    font-size: 0.85rem;
+    font-weight: 700;
 }
 
 .termo-aviso-leitura.concluido {
-    color: #18726b;
+    color: #8B586F;
 }
 
 .termo-confirmacoes {
-    margin: 0;
-    padding: 0;
-    border: 0;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    margin: 0;
+    padding: 0;
+    border: 0;
 }
 
 .termo-confirmacoes legend {
-    margin-bottom: 8px;
-    font-weight: 650;
-    font-size: 0.92rem;
+    margin-bottom: 10px;
+    padding: 0;
 }
 
 .termo-confirmacoes:disabled {
-    opacity: 0.55;
+    opacity: 0.5;
 }
 
 .termo-confirmacao {
     display: flex;
-    gap: 10px;
     align-items: flex-start;
-    padding: 10px 12px;
-    border: 1px solid #e4e8ec;
-    border-radius: 6px;
-    background: #ffffff;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid #F5E2EC;
+    border-radius: 12px;
+    background: #FFFFFF;
+    color: #6F4A5C;
     font-size: 0.92rem;
     line-height: 1.45;
     cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
 }
 
-.termo-confirmacao input {
-    flex: 0 0 auto;
-    width: 18px;
-    height: 18px;
+.termo-confirmacao:has(.soft-checkbox:checked) {
+    border-color: #E2B8CC;
+    background: #FFF7FA;
+}
+
+.termo-confirmacao .soft-checkbox {
     margin-top: 2px;
-    accent-color: #18726b;
+}
+
+.termo-ajuda {
+    margin: 0;
+    color: #A26D85;
+    font-size: 0.82rem;
+}
+
+.termo-form .soft-btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .termo-aceito {
     margin-top: 20px;
-    padding: 16px 18px;
-    border: 1px solid #b7dfd9;
-    border-radius: 6px;
-    background: #eef7f5;
 }
 
-.termo-aceito dl {
+.termo-aceito .cadastro-resumo-title {
+    margin-bottom: 12px;
+    text-align: left;
+}
+
+.termo-aceito-grid {
     display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 6px 14px;
-    margin: 0 0 12px;
-    font-size: 0.92rem;
-}
-
-.termo-aceito dt {
-    font-weight: 650;
-}
-
-.termo-aceito dd {
-    margin: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
 }
 
 .termo-hash {
     font-family: Consolas, "Courier New", monospace;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     word-break: break-all;
 }
 
-.termo-acoes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: flex-end;
-}
-
-@media (max-width: 560px) {
-    .termo-aceito dl {
+@media (max-width: 600px) {
+    .termo-identificacao,
+    .termo-aceito-grid {
         grid-template-columns: 1fr;
+    }
+
+    .termo-card {
+        padding: 28px 18px;
     }
 }
 
 @media print {
-    body {
-        background: #ffffff;
+    .soft-auth-page {
+        background: #FFFFFF;
+        padding: 0;
     }
 
     .no-print {
         display: none !important;
     }
 
-    .auth-container {
-        padding: 0;
-        min-height: 0;
-    }
-
-    .termo-box {
-        max-width: none;
+    .termo-card {
         border: 0;
         box-shadow: none;
     }

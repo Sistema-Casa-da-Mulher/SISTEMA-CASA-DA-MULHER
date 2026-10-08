@@ -10,61 +10,91 @@
     <script src="app.js" defer></script>
     <script src="termo-sigilo.js" defer></script>
 </head>
-<body>
-    <main class="auth-container">
-        <section class="auth-box termo-box">
-            <img src="IMAGENS/logo_oficial.png" alt="Logo Casa da Mulher" class="logo-login">
-            <h1 class="auth-title" id="termoTitulo">Termo de Confidencialidade e Prote&ccedil;&atilde;o de Dados</h1>
-            <p class="auth-subtitle" id="termoSubtitulo">Carregando o termo...</p>
+<body class="soft-auth-page">
+    <div class="soft-auth-shell termo-shell">
+        <div class="soft-auth-card termo-card">
+            <img src="IMAGENS/logo_oficial.png" alt="Logo Casa da Mulher" class="soft-auth-logo">
+            <h1 class="soft-auth-title" id="termoTitulo">Termo de Confidencialidade e Prote&ccedil;&atilde;o de Dados</h1>
+            <p class="soft-auth-subtitle" id="termoSubtitulo">Carregando o termo...</p>
 
             <div id="termoConteudo" class="hidden">
-                <p class="termo-identificacao" id="termoIdentificacao"></p>
+                <div class="cadastro-resumo-convite termo-identificacao">
+                    <div class="cadastro-resumo-item">
+                        <span class="cadastro-resumo-label">Nome</span>
+                        <span id="termoIdentNome" class="cadastro-resumo-value">-</span>
+                    </div>
+                    <div class="cadastro-resumo-item">
+                        <span class="cadastro-resumo-label">ID de acesso</span>
+                        <span id="termoIdentId" class="cadastro-resumo-value">-</span>
+                    </div>
+                    <div class="cadastro-resumo-item">
+                        <span class="cadastro-resumo-label">Vers&atilde;o do termo</span>
+                        <span id="termoIdentVersao" class="cadastro-resumo-value">-</span>
+                    </div>
+                </div>
 
                 <section class="termo-resumo" aria-labelledby="termoResumoTitulo">
-                    <h2 id="termoResumoTitulo">Em resumo, o que voc&ecirc; precisa saber</h2>
+                    <h2 id="termoResumoTitulo" class="cadastro-resumo-title">Em resumo, o que voc&ecirc; precisa saber</h2>
                     <ul id="termoResumo"></ul>
                 </section>
 
-                <h2 class="termo-secao-titulo">Texto completo do termo</h2>
+                <h2 class="cadastro-resumo-title termo-secao-titulo">Texto completo do termo</h2>
                 <div id="termoTexto" class="termo-texto" tabindex="0" aria-label="Texto completo do termo"></div>
                 <p id="termoAvisoLeitura" class="termo-aviso-leitura no-print">Role o texto at&eacute; o final para liberar o aceite.</p>
 
-                <form id="formTermoSigilo" class="auth-form termo-form no-print" novalidate>
+                <form id="formTermoSigilo" class="soft-auth-form termo-form no-print" novalidate>
                     <fieldset id="termoConfirmacoes" class="termo-confirmacoes" disabled>
-                        <legend>Marque cada declara&ccedil;&atilde;o para confirmar</legend>
+                        <legend class="cadastro-resumo-title">Marque cada declara&ccedil;&atilde;o para confirmar</legend>
                     </fieldset>
 
-                    <div class="input-group">
+                    <div class="soft-form-group">
                         <label for="termoNomeAssinatura">Assinatura: digite seu nome completo</label>
-                        <input type="text" id="termoNomeAssinatura" autocomplete="off" spellcheck="false" disabled required>
-                        <p class="field-help" id="termoNomeAjuda"></p>
+                        <input type="text" id="termoNomeAssinatura" class="soft-input" autocomplete="off" spellcheck="false" disabled required>
+                        <p class="termo-ajuda" id="termoNomeAjuda"></p>
                     </div>
 
-                    <div id="mensagemTermo" class="message" aria-live="polite"></div>
+                    <div id="mensagemTermo" class="message soft-auth-message" aria-live="polite"></div>
 
-                    <button type="submit" id="btnAceitarTermo" class="btn-primary" disabled>Li, entendi e aceito o termo</button>
-                    <button type="button" id="btnRecusarTermo" class="btn-secondary">N&atilde;o aceito e quero sair</button>
+                    <div class="soft-auth-actions">
+                        <button type="submit" id="btnAceitarTermo" class="soft-btn soft-btn-primary" disabled>Li, entendi e aceito o termo</button>
+                        <button type="button" id="btnRecusarTermo" class="soft-btn soft-btn-secondary">N&atilde;o aceito e quero sair</button>
+                    </div>
                 </form>
 
-                <section id="termoAceito" class="termo-aceito hidden" aria-live="polite">
-                    <h2>Termo aceito</h2>
-                    <dl>
-                        <dt>Assinado por</dt><dd id="termoAceitoNome"></dd>
-                        <dt>ID de acesso</dt><dd id="termoAceitoId"></dd>
-                        <dt>Data e hora</dt><dd id="termoAceitoData"></dd>
-                        <dt>Vers&atilde;o</dt><dd id="termoAceitoVersao"></dd>
-                        <dt>C&oacute;digo de verifica&ccedil;&atilde;o</dt><dd id="termoAceitoHash" class="termo-hash"></dd>
-                    </dl>
-                    <p id="termoAceitoAviso" class="message"></p>
-                    <div class="termo-acoes no-print">
-                        <button type="button" id="btnImprimirTermo" class="btn-secondary">Imprimir ou salvar c&oacute;pia</button>
-                        <button type="button" id="btnContinuarTermo" class="btn-primary">Continuar para o sistema</button>
+                <section id="termoAceito" class="cadastro-resumo-convite termo-aceito hidden" aria-live="polite">
+                    <h2 class="cadastro-resumo-title">Termo aceito</h2>
+                    <div class="termo-aceito-grid">
+                        <div class="cadastro-resumo-item">
+                            <span class="cadastro-resumo-label">Assinado por</span>
+                            <span id="termoAceitoNome" class="cadastro-resumo-value"></span>
+                        </div>
+                        <div class="cadastro-resumo-item">
+                            <span class="cadastro-resumo-label">ID de acesso</span>
+                            <span id="termoAceitoId" class="cadastro-resumo-value"></span>
+                        </div>
+                        <div class="cadastro-resumo-item">
+                            <span class="cadastro-resumo-label">Data e hora</span>
+                            <span id="termoAceitoData" class="cadastro-resumo-value"></span>
+                        </div>
+                        <div class="cadastro-resumo-item">
+                            <span class="cadastro-resumo-label">Vers&atilde;o</span>
+                            <span id="termoAceitoVersao" class="cadastro-resumo-value"></span>
+                        </div>
+                    </div>
+                    <div class="cadastro-resumo-item">
+                        <span class="cadastro-resumo-label">C&oacute;digo de verifica&ccedil;&atilde;o</span>
+                        <span id="termoAceitoHash" class="cadastro-resumo-value termo-hash"></span>
+                    </div>
+                    <p id="termoAceitoAviso" class="message soft-auth-message"></p>
+                    <div class="soft-auth-actions no-print">
+                        <button type="button" id="btnContinuarTermo" class="soft-btn soft-btn-primary">Continuar para o sistema</button>
+                        <button type="button" id="btnImprimirTermo" class="soft-btn soft-btn-secondary">Imprimir ou salvar c&oacute;pia</button>
                     </div>
                 </section>
             </div>
 
-            <div id="mensagemCarregarTermo" class="message" aria-live="polite"></div>
-        </section>
-    </main>
+            <div id="mensagemCarregarTermo" class="message soft-auth-message" aria-live="polite"></div>
+        </div>
+    </div>
 </body>
 </html>

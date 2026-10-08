@@ -29,8 +29,9 @@
 
     function renderizarTermo(termo) {
         document.getElementById("termoTitulo").textContent = termo.titulo;
-        document.getElementById("termoIdentificacao").textContent =
-            `${termo.nomeCompleto} · ID ${termo.identificadorFuncionario} · Versão ${termo.versao}`;
+        document.getElementById("termoIdentNome").textContent = termo.nomeCompleto;
+        document.getElementById("termoIdentId").textContent = termo.identificadorFuncionario;
+        document.getElementById("termoIdentVersao").textContent = termo.versao;
 
         const resumo = document.getElementById("termoResumo");
         resumo.replaceChildren(...termo.resumo.map(item => criarElemento("li", item)));
@@ -48,6 +49,7 @@
             const label = criarElemento("label", null, "termo-confirmacao");
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
+            checkbox.className = "soft-checkbox";
             checkbox.id = `termoConfirmacao${indice}`;
             checkbox.addEventListener("change", atualizarBotaoAceite);
             label.htmlFor = checkbox.id;
