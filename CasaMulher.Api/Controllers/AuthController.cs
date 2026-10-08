@@ -751,13 +751,17 @@ public partial class AuthController : ControllerBase
             return Unauthorized();
         }
 
+        var perfilSessao = User.FindFirstValue("perfil") ?? usuario.Perfil;
+        var termoSigiloService = HttpContext.RequestServices.GetRequiredService<TermoSigiloService>();
+
         return Ok(new UsuarioAtualResponse
         {
             NomeCompleto = usuario.NomeCompleto,
             Email = usuario.Email ?? string.Empty,
             EmailRecuperacao = usuario.EmailRecuperacao,
             EmailRecuperacaoConfirmado = usuario.EmailRecuperacaoConfirmado,
-            Perfil = User.FindFirstValue("perfil") ?? usuario.Perfil,
+            TermoSigiloPendente = await termoSigiloService.AceitePendenteAsync(usuario.Id, perfilSessao),
+            Perfil = perfilSessao,
             ProfessorCurso = usuario.ProfessorCurso,
             IdentificadorFuncionario = User.FindFirstValue("identificadorFuncionario") ?? usuario.IdentificadorFuncionario,
             DoisFatoresObrigatorio = usuario.DoisFatoresObrigatorio,

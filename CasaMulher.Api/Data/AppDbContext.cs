@@ -36,6 +36,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<GitHubUsuarioVinculo> GitHubUsuarioVinculos => Set<GitHubUsuarioVinculo>();
 
+    public DbSet<TermoSigiloAceite> TermoSigiloAceites => Set<TermoSigiloAceite>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -352,6 +354,28 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(t => t.TokenHash).IsRequired().HasMaxLength(256);
             entity.Property(t => t.Tipo).IsRequired().HasMaxLength(50);
             entity.Property(t => t.EmailDestino).HasMaxLength(256);
+        });
+
+        builder.Entity<TermoSigiloAceite>(entity =>
+        {
+            entity.ToTable("TermoSigiloAceites");
+            entity.HasIndex(t => new { t.UserId, t.VersaoTermo });
+            entity.HasIndex(t => t.AceitoEm);
+
+            entity.Property(t => t.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(t => t.IdentificadorFuncionario).IsRequired().HasMaxLength(80);
+            entity.Property(t => t.Perfil).IsRequired().HasMaxLength(50);
+            entity.Property(t => t.VersaoTermo).IsRequired().HasMaxLength(40);
+            entity.Property(t => t.HashTermo).IsRequired().HasMaxLength(128);
+            entity.Property(t => t.NomeAssinado).IsRequired().HasMaxLength(256);
+            entity.Property(t => t.EnderecoIp).HasMaxLength(64);
+            entity.Property(t => t.UserAgent).HasMaxLength(512);
+
+            // Sem cascata: o registro do aceite é prova e não pode sumir junto com a conta.
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

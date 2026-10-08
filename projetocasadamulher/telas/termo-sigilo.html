@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termo de Confidencialidade - Casa da Mulher</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js" defer></script>
+    <script src="auth.js" defer></script>
+    <script src="app.js" defer></script>
+    <script src="termo-sigilo.js" defer></script>
+</head>
+<body>
+    <main class="auth-container">
+        <section class="auth-box termo-box">
+            <img src="IMAGENS/logo_oficial.png" alt="Logo Casa da Mulher" class="logo-login">
+            <h1 class="auth-title" id="termoTitulo">Termo de Confidencialidade e Prote&ccedil;&atilde;o de Dados</h1>
+            <p class="auth-subtitle" id="termoSubtitulo">Carregando o termo...</p>
+
+            <div id="termoConteudo" class="hidden">
+                <p class="termo-identificacao" id="termoIdentificacao"></p>
+
+                <section class="termo-resumo" aria-labelledby="termoResumoTitulo">
+                    <h2 id="termoResumoTitulo">Em resumo, o que voc&ecirc; precisa saber</h2>
+                    <ul id="termoResumo"></ul>
+                </section>
+
+                <h2 class="termo-secao-titulo">Texto completo do termo</h2>
+                <div id="termoTexto" class="termo-texto" tabindex="0" aria-label="Texto completo do termo"></div>
+                <p id="termoAvisoLeitura" class="termo-aviso-leitura no-print">Role o texto at&eacute; o final para liberar o aceite.</p>
+
+                <form id="formTermoSigilo" class="auth-form termo-form no-print" novalidate>
+                    <fieldset id="termoConfirmacoes" class="termo-confirmacoes" disabled>
+                        <legend>Marque cada declara&ccedil;&atilde;o para confirmar</legend>
+                    </fieldset>
+
+                    <div class="input-group">
+                        <label for="termoNomeAssinatura">Assinatura: digite seu nome completo</label>
+                        <input type="text" id="termoNomeAssinatura" autocomplete="off" spellcheck="false" disabled required>
+                        <p class="field-help" id="termoNomeAjuda"></p>
+                    </div>
+
+                    <div id="mensagemTermo" class="message" aria-live="polite"></div>
+
+                    <button type="submit" id="btnAceitarTermo" class="btn-primary" disabled>Li, entendi e aceito o termo</button>
+                    <button type="button" id="btnRecusarTermo" class="btn-secondary">N&atilde;o aceito e quero sair</button>
+                </form>
+
+                <section id="termoAceito" class="termo-aceito hidden" aria-live="polite">
+                    <h2>Termo aceito</h2>
+                    <dl>
+                        <dt>Assinado por</dt><dd id="termoAceitoNome"></dd>
+                        <dt>ID de acesso</dt><dd id="termoAceitoId"></dd>
+                        <dt>Data e hora</dt><dd id="termoAceitoData"></dd>
+                        <dt>Vers&atilde;o</dt><dd id="termoAceitoVersao"></dd>
+                        <dt>C&oacute;digo de verifica&ccedil;&atilde;o</dt><dd id="termoAceitoHash" class="termo-hash"></dd>
+                    </dl>
+                    <p id="termoAceitoAviso" class="message"></p>
+                    <div class="termo-acoes no-print">
+                        <button type="button" id="btnImprimirTermo" class="btn-secondary">Imprimir ou salvar c&oacute;pia</button>
+                        <button type="button" id="btnContinuarTermo" class="btn-primary">Continuar para o sistema</button>
+                    </div>
+                </section>
+            </div>
+
+            <div id="mensagemCarregarTermo" class="message" aria-live="polite"></div>
+        </section>
+    </main>
+</body>
+</html>

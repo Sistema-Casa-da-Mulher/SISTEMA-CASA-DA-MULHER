@@ -280,6 +280,7 @@ builder.Services.AddHttpClient<GitHubPrivateFileService>();
 builder.Services.AddScoped<EquipeDbSyncService>();
 builder.Services.AddScoped<HmlDbSnapshotService>();
 builder.Services.AddScoped<SecuritySnapshotPersistenceService>();
+builder.Services.AddScoped<TermoSigiloService>();
 builder.Services.AddScoped<HomologacaoSeedService>();
 builder.Services.AddScoped<ContaEquipeSincronizadaService>();
 builder.Services.AddSingleton<GitHubPortalSessionStore>();
@@ -537,6 +538,7 @@ app.UseCors("FrontendLocal");
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<TermoSigiloMiddleware>();
 
 app.MapGet("/", () => Results.Redirect("/equipe.html"));
 app.MapControllers();

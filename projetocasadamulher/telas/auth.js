@@ -273,10 +273,24 @@
         }
 
         if (response.status === 403) {
+            if (await termoSigiloPendenteNaResposta(response)) {
+                window.location.href = "termo-sigilo.html";
+                return response;
+            }
+
             mostrarMensagem(mensagemElement, forbiddenMessage, "error");
         }
 
         return response;
+    }
+
+    async function termoSigiloPendenteNaResposta(response) {
+        try {
+            const corpo = await response.clone().json();
+            return corpo?.erro === "TERMO_SIGILO_PENDENTE";
+        } catch {
+            return false;
+        }
     }
 
     async function carregarUsuarioAtual(options) {
@@ -333,9 +347,15 @@
 
         const paginaTrocaSenha = window.location.pathname.endsWith("trocar-senha.html");
         const paginaSeguranca = window.location.pathname.endsWith("seguranca.html");
+        const paginaTermoSigilo = window.location.pathname.endsWith("termo-sigilo.html");
 
         if (usuario.deveTrocarSenha && !paginaTrocaSenha && settings.permitirTrocaSenhaPendente !== true) {
             window.location.href = "trocar-senha.html";
+            return null;
+        }
+
+        if (usuario.termoSigiloPendente && !paginaTermoSigilo && settings.permitirTermoPendente !== true) {
+            window.location.href = "termo-sigilo.html";
             return null;
         }
 

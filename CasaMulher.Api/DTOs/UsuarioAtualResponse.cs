@@ -21,4 +21,6 @@ public class UsuarioAtualResponse
     public bool DoisFatoresAtivado { get; set; }
 
     public bool DeveTrocarSenha { get; set; }
+
+    public bool TermoSigiloPendente { get; set; }
 }
