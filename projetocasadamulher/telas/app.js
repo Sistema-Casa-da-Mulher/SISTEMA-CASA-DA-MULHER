@@ -3863,7 +3863,7 @@ function obterLimiteExpiracaoToken() {
     } catch (e) { console.error("Falha ao ler exp do token", e); }
     
     // Ultimate fallback: block far future
-    return new Date(Date.now() + 24 * 60 * 60 * 1000);
+    return new Date(Date.now() + 30 * 60 * 1000);
 }
 
 function formatTimeRemaining(ms) {
@@ -4084,7 +4084,7 @@ function abrirModalFimExpediente() {
         ${btnAdiarHtml}
         <button type="button" class="soft-btn soft-btn-secondary" onclick="fecharModalBase(); abrirModalDefinirExpediente()">Escolher novo horário</button>
         <button type="button" class="soft-btn soft-btn-secondary" onclick="desligarTimerExpediente()">Desligar timer do expediente</button>
-        <p style="font-size: 0.8rem; color: #A26D85; margin-top: 12px; margin-bottom: 0;">Mesmo com o timer desligado, a sessão continuará sujeita à expiração automática do token de 24h.</p>
+        <p style="font-size: 0.8rem; color: #A26D85; margin-top: 12px; margin-bottom: 0;">Mesmo com o timer desligado, a sessão continuará sujeita à expiração automática do token de 30 minutos.</p>
     `;
 
     abrirModalBase("Fim do expediente", htmlConteudo, htmlBotoes);
@@ -4131,5 +4131,5 @@ function desligarTimerExpediente() {
 }
 
 // Controle de expediente no frontend. Não revoga o JWT no servidor.
-// TODO: criar revogação server-side por sessionId para invalidação real antes das 24h.
+// TODO: criar revogação server-side por sessionId para invalidação real antes dos 30 minutos.
 
