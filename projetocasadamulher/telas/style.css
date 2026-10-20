@@ -3343,3 +3343,136 @@ dd.responsavel-meta {
         border: 0;
     }
 }
+
+/* ==========================================================================
+   CADASTRO DA ASSISTIDA E JURÍDICO (Soft UI)
+   ========================================================================== */
+.soft-form-row-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.3rem;
+    margin-bottom: 1.5rem;
+}
+
+.soft-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #8B586F;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+}
+
+.soft-check input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: #C27E9E;
+}
+
+.soft-fieldset-title {
+    color: #8B586F;
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 8px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #F5E2EC;
+}
+
+.soft-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: #FBE4EE;
+    color: #8B586F;
+    border: 1px solid #F3C9DA;
+}
+
+.soft-badge--restrito {
+    background: #FDE8E8;
+    color: #A23B3B;
+    border-color: #F5B5B5;
+}
+
+.soft-badge--juridico {
+    background: #EFE6F7;
+    color: #6E4C8B;
+    border-color: #D9C6EA;
+}
+
+.soft-badge--ok {
+    background: #E5F4EC;
+    color: #2F6B4B;
+    border-color: #BFE3CF;
+}
+
+.soft-alert {
+    border-radius: 1.2rem;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    background: #FFF6E5;
+    color: #7A5A1E;
+    border: 1px solid #F3DDAF;
+}
+
+.soft-alert--restrito {
+    background: #FDECEC;
+    color: #8E2F2F;
+    border-color: #F5B5B5;
+    font-weight: 600;
+}
+
+.soft-alert--info {
+    background: #F6EAF1;
+    color: #8B586F;
+    border-color: #E9C9DA;
+}
+
+.soft-char-count {
+    text-align: right;
+    font-size: 0.8rem;
+    color: #AD859B;
+    margin-top: 4px;
+}
+
+.soft-char-count.limite {
+    color: #B4651E;
+    font-weight: 700;
+}
+
+.painel-action-card--juridico {
+    background: linear-gradient(135deg, #EFE6F7 0%, #DCCAEC 100%);
+    border: 1px solid #CDB5E2;
+}
+
+.painel-action-card--juridico:hover {
+    background: linear-gradient(135deg, #F6F0FB 0%, #E7DAF2 100%);
+    border-color: #CDB5E2;
+}
+
+.painel-action-card--juridico .painel-action-card-title {
+    color: #6E4C8B;
+}
+
+.painel-action-card--juridico .painel-action-card-subtitle {
+    color: #8A6CA3;
+}
+
+@media (max-width: 760px) {
+    .soft-form-row-3 {
+        grid-template-columns: 1fr;
+    }
+}
+
+textarea.soft-input {
+    font-family: inherit;
+}

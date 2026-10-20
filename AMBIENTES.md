@@ -106,6 +106,12 @@ dotnet run --urls http://localhost:5001
 
 Use sempre o painel do provedor para guardar a connection string e segredos. O repositorio deve manter somente exemplos e configuracoes sem senha. Para homologacao gratuita inicial, a recomendacao atual do projeto e Neon PostgreSQL Free com backups logicos via `pg_dump`.
 
+## Dados das assistidas na homologacao
+
+O cadastro das assistidas e os atendimentos juridicos ficam no mesmo banco da API. No Render Free (SQLite temporario), eles sobrevivem a reinicios pelo snapshot criptografado em `ACESSO-EQUIPE`, que e enviado logo depois de cada gravacao. Por isso **na homologacao so podem entrar dados ficticios**. Dados reais so no servidor dedicado, com `Database:Provider=PostgreSQL`.
+
+Na primeira subida em `Staging` com o banco vazio, os cadastros ficticios do seed (`recepcao`) sao importados para a tabela `Assistidas`.
+
 ## Seed demo
 
 O seed demo cria roles e convites locais para teste. Ele fica habilitado apenas em `Development`.

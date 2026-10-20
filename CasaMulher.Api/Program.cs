@@ -150,6 +150,7 @@ var rolesCursos = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAc
 var rolesProntuarioSocial = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.AssistenteSocial);
 var rolesJuridico = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Juridico);
 var rolesRelatorios = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.AssistenteSocial, PerfisAcesso.Juridico);
+var rolesCadastroAssistidas = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Recepcao, PerfisAcesso.AssistenteSocial, PerfisAcesso.Juridico);
 
 builder.Services.AddAuthorization(options =>
 {
@@ -175,6 +176,10 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy(PoliticasAcesso.AcessoRelatorios, policy =>
         policy.RequireRole(rolesRelatorios)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
+
+    options.AddPolicy(PoliticasAcesso.CadastroAssistidas, policy =>
+        policy.RequireRole(rolesCadastroAssistidas)
             .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 
     options.AddPolicy(PoliticasAcesso.AcessoEquipe, policy =>
@@ -279,6 +284,7 @@ builder.Services.AddHttpClient<IEquipeDbGitHubService, EquipeDbGitHubService>();
 builder.Services.AddHttpClient<GitHubPrivateFileService>();
 builder.Services.AddScoped<EquipeDbSyncService>();
 builder.Services.AddScoped<HmlDbSnapshotService>();
+builder.Services.AddScoped<AssistidasService>();
 builder.Services.AddScoped<SecuritySnapshotPersistenceService>();
 builder.Services.AddScoped<TermoSigiloService>();
 builder.Services.AddScoped<HomologacaoSeedService>();
@@ -483,6 +489,9 @@ if (app.Environment.IsStaging())
     {
         var seedService = stagingScope.ServiceProvider.GetRequiredService<HomologacaoSeedService>();
         await seedService.ApplyIfNeededAsync();
+
+        var assistidasService = stagingScope.ServiceProvider.GetRequiredService<AssistidasService>();
+        await assistidasService.ImportarSeedAsync(await seedService.LoadAsync());
     }
     catch (Exception ex)
     {

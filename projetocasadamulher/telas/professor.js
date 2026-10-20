@@ -5,7 +5,6 @@ let cursoVinculado = null;
 let alunasDoCurso = [];
 
 // Storage keys
-const STORAGE_ALUNAS = "casamulher_itaqua";
 const STORAGE_CHAMADAS = "casamulher_professor_chamadas";
 const STORAGE_PLANOS = "casamulher_professor_planos";
 const STORAGE_ATIVIDADES = "casamulher_professor_atividades";
@@ -43,7 +42,7 @@ async function setupProfessor() {
     inicializarAtividades();
     setupChipsEvents();
     setupTabs();
-    carregarAlunas();
+    await carregarAlunas();
     setupChamada();
     setupPlanoEnsino();
 }
@@ -197,15 +196,17 @@ function renderizarChips(lista, container, tipo) {
 /* ==========================================================================
    ALUNAS
    ========================================================================== */
-function carregarAlunas() {
-    const dados = localStorage.getItem(STORAGE_ALUNAS);
+async function carregarAlunas() {
+    // As alunas vêm do servidor, já filtradas pelo curso vinculado (antes vinham do localStorage da Recepção).
     let todasAssistidas = [];
-    
-    if (dados) {
-        todasAssistidas = JSON.parse(dados);
+    try {
+        const response = await CasaMulherAuth.apiFetch("/api/assistidas/curso");
+        todasAssistidas = response.ok ? await response.json() : [];
+    } catch {
+        todasAssistidas = [];
     }
-    
-    alunasDoCurso = todasAssistidas.filter(p => normalizarTexto(obterNomeCurso(p.curso)) === normalizarTexto(cursoVinculado));
+
+    alunasDoCurso = Array.isArray(todasAssistidas) ? todasAssistidas : [];
     
     renderizarAlunas(alunasDoCurso);
 
@@ -241,11 +242,11 @@ function renderizarAlunas(lista) {
         const iconeTelefone = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D2AAB9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>`;
         const iconeData = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D2AAB9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
 
-        const telefone = aluna.telefone ? `<div class="professor-aluna-detail">${iconeTelefone} <span style="font-weight: 500;">${aluna.telefone}</span></div>` : "";
+        const telefone = aluna.telefone ? `<div class="professor-aluna-detail">${iconeTelefone} <span style="font-weight: 500;">${escapeHtml(aluna.telefone)}</span></div>` : "";
         const dataCadastro = aluna.dataAcolhimento ? `<div class="professor-aluna-detail">${iconeData} <span>Cadastrada em: ${new Date(aluna.dataAcolhimento).toLocaleDateString('pt-BR')}</span></div>` : "";
         
         card.innerHTML = `
-            <div class="professor-aluna-name">${aluna.nome}</div>
+            <div class="professor-aluna-name">${escapeHtml(aluna.nome)}</div>
             ${telefone}
             ${dataCadastro}
         `;
@@ -363,7 +364,7 @@ function renderizarListaChamada(registros) {
         
         card.innerHTML = `
             <div style="flex: 1; min-width: 200px;">
-                <div style="font-weight: 700; color: #8A3D66; font-size: 1.05rem;">${reg.nome}</div>
+                <div style="font-weight: 700; color: #8A3D66; font-size: 1.05rem;">${escapeHtml(reg.nome)}</div>
                 <input type="text" class="soft-input obs-input" placeholder="Observação (opcional)" value="${reg.observacao || ''}" style="margin-top: 8px; width: 100%; max-width: 300px; padding: 4px 8px; font-size: 0.85rem;">
             </div>
             <div class="professor-status-group">

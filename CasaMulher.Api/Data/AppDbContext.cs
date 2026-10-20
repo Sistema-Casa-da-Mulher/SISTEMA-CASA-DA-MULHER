@@ -38,6 +38,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<TermoSigiloAceite> TermoSigiloAceites => Set<TermoSigiloAceite>();
 
+    public DbSet<Assistida> Assistidas => Set<Assistida>();
+
+    public DbSet<CasoJuridico> CasosJuridicos => Set<CasoJuridico>();
+
+    public DbSet<CasoJuridicoResponsavel> CasosJuridicosResponsaveis => Set<CasoJuridicoResponsavel>();
+
+    public DbSet<AtendimentoJuridico> AtendimentosJuridicos => Set<AtendimentoJuridico>();
+
+    public DbSet<AtendimentoJuridicoAdendo> AtendimentosJuridicosAdendos => Set<AtendimentoJuridicoAdendo>();
+
+    public DbSet<CasoJuridicoAcessoEmergencia> CasosJuridicosAcessosEmergencia => Set<CasoJuridicoAcessoEmergencia>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -375,6 +387,121 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne<ApplicationUser>()
                 .WithMany()
                 .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Assistida>(entity =>
+        {
+            entity.ToTable("Assistidas");
+            entity.HasIndex(a => a.Cpf).IsUnique();
+            entity.HasIndex(a => a.Nome);
+            entity.HasIndex(a => a.EncaminhadaJuridicoEm);
+
+            entity.Property(a => a.Nome).IsRequired().HasMaxLength(160);
+            entity.Property(a => a.Cpf).IsRequired().HasMaxLength(11);
+            entity.Property(a => a.Telefone).HasMaxLength(20);
+            entity.Property(a => a.ContatoSeguro).IsRequired().HasMaxLength(20);
+            entity.Property(a => a.ContatoSeguroObservacao).HasMaxLength(300);
+            entity.Property(a => a.Email).HasMaxLength(256);
+            entity.Property(a => a.Cep).HasMaxLength(8);
+            entity.Property(a => a.Endereco).HasMaxLength(200);
+            entity.Property(a => a.EnderecoNumero).HasMaxLength(60);
+            entity.Property(a => a.Bairro).HasMaxLength(120);
+            entity.Property(a => a.Cidade).HasMaxLength(120);
+            entity.Property(a => a.Uf).HasMaxLength(2);
+            entity.Property(a => a.Direcionamento).HasMaxLength(60);
+            entity.Property(a => a.Observacoes).HasMaxLength(1000);
+            entity.Property(a => a.Origem).IsRequired().HasMaxLength(20);
+            entity.Property(a => a.CadastradaPorUserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.CadastradaPorIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(a => a.CadastradaPorNome).IsRequired().HasMaxLength(160);
+            entity.Property(a => a.CadastradaPorEmail).HasMaxLength(256);
+            entity.Property(a => a.MotivoRestricao).HasMaxLength(40);
+            entity.Property(a => a.RestricaoAlteradaPorIdentificador).HasMaxLength(80);
+        });
+
+        builder.Entity<CasoJuridico>(entity =>
+        {
+            entity.ToTable("CasosJuridicos");
+            entity.HasIndex(c => c.AssistidaId).IsUnique();
+            entity.Property(c => c.Visibilidade).IsRequired().HasMaxLength(20);
+            entity.Property(c => c.Situacao).IsRequired().HasMaxLength(30);
+
+            // Restrict: o histórico jurídico nunca some junto com o cadastro.
+            entity.HasOne(c => c.Assistida)
+                .WithMany()
+                .HasForeignKey(c => c.AssistidaId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CasoJuridicoResponsavel>(entity =>
+        {
+            entity.ToTable("CasosJuridicosResponsaveis");
+            entity.HasIndex(r => new { r.CasoJuridicoId, r.UserId }).IsUnique();
+            entity.HasIndex(r => r.UserId);
+            entity.Property(r => r.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(r => r.Identificador).IsRequired().HasMaxLength(80);
+            entity.Property(r => r.Nome).IsRequired().HasMaxLength(160);
+            entity.Property(r => r.AtribuidoPorIdentificador).IsRequired().HasMaxLength(80);
+
+            entity.HasOne(r => r.Caso)
+                .WithMany(c => c.Responsaveis)
+                .HasForeignKey(r => r.CasoJuridicoId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<AtendimentoJuridico>(entity =>
+        {
+            entity.ToTable("AtendimentosJuridicos");
+            entity.HasIndex(a => a.Protocolo).IsUnique();
+            entity.HasIndex(a => new { a.Ano, a.Sequencial }).IsUnique();
+            entity.HasIndex(a => a.CriadoEm);
+            entity.Property(a => a.Protocolo).IsRequired().HasMaxLength(20);
+            entity.Property(a => a.ProfissionalUserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.ProfissionalIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(a => a.ProfissionalNome).IsRequired().HasMaxLength(160);
+            entity.Property(a => a.TipoDemanda).IsRequired().HasMaxLength(40);
+            entity.Property(a => a.TipoDemandaOutro).HasMaxLength(120);
+            entity.Property(a => a.NumeroProcesso).HasMaxLength(40);
+            entity.Property(a => a.Vara).HasMaxLength(120);
+            entity.Property(a => a.Encaminhamentos).HasMaxLength(200);
+            entity.Property(a => a.EncaminhamentoOutro).HasMaxLength(120);
+            entity.Property(a => a.Relato).IsRequired().HasMaxLength(5000);
+            entity.Property(a => a.ProximoPasso).HasMaxLength(500);
+            entity.Property(a => a.Situacao).IsRequired().HasMaxLength(30);
+
+            entity.HasOne(a => a.Caso)
+                .WithMany(c => c.Atendimentos)
+                .HasForeignKey(a => a.CasoJuridicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AtendimentoJuridicoAdendo>(entity =>
+        {
+            entity.ToTable("AtendimentosJuridicosAdendos");
+            entity.Property(a => a.Texto).IsRequired().HasMaxLength(2000);
+            entity.Property(a => a.AutorUserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.AutorIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(a => a.AutorNome).IsRequired().HasMaxLength(160);
+
+            entity.HasOne(a => a.Atendimento)
+                .WithMany(a => a.Adendos)
+                .HasForeignKey(a => a.AtendimentoJuridicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CasoJuridicoAcessoEmergencia>(entity =>
+        {
+            entity.ToTable("CasosJuridicosAcessosEmergencia");
+            entity.HasIndex(a => new { a.CasoJuridicoId, a.UserId });
+            entity.Property(a => a.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.Identificador).IsRequired().HasMaxLength(80);
+            entity.Property(a => a.Nome).IsRequired().HasMaxLength(160);
+            entity.Property(a => a.Motivo).IsRequired().HasMaxLength(500);
+
+            entity.HasOne(a => a.Caso)
+                .WithMany()
+                .HasForeignKey(a => a.CasoJuridicoId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

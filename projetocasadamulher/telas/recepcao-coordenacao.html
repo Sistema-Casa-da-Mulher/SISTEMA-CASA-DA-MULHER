@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acompanhamento da Recep&ccedil;&atilde;o - Casa da Mulher</title>
-    <link rel="stylesheet" href="style.css?v=13">
+    <link rel="stylesheet" href="style.css?v=14">
     <script src="config.js" defer></script>
     <script src="auth.js" defer></script>
     <script src="app.js?v=13" defer></script>
@@ -12,7 +12,6 @@
         (function () {
             "use strict";
 
-            const STORAGE_KEY = "casamulher_itaqua";
             let patients = [];
             let usuarioLogado = null;
             
@@ -96,27 +95,11 @@
             }
 
             async function loadData() {
+                // Os acolhimentos agora vêm do servidor (antes ficavam só no navegador da Recepção).
                 try {
-                    const stored = localStorage.getItem(STORAGE_KEY);
-                    patients = stored ? JSON.parse(stored) : [];
-
-                    if (!Array.isArray(patients)) {
-                        patients = [];
-                    }
-
-                    if (patients.length === 0) {
-                        const response = await CasaMulherAuth.apiFetch("/api/homologacao/recepcao-seed");
-                        if (response.ok) {
-                            const seed = await response.json();
-                            patients = Array.isArray(seed) ? seed.map(function (item) {
-                                return Object.assign({}, item, {
-                                    cpfClean: String(item.cpf || "").replace(/\D/g, ""),
-                                    criadoEm: item.criadoEm || new Date().toISOString(),
-                                    atualizadoEm: item.atualizadoEm || new Date().toISOString()
-                                });
-                            }) : [];
-                        }
-                    }
+                    const response = await CasaMulherAuth.apiFetch("/api/assistidas");
+                    const lista = response.ok ? await response.json() : [];
+                    patients = Array.isArray(lista) ? lista : [];
                 } catch {
                     patients = [];
                 }
@@ -210,11 +193,15 @@
                             <div class="coordenacao-perfil-title">${escapeHtmlValue(p.nome)}</div>
                             <div class="coordenacao-perfil-line">
                                 <span><strong>CPF:</strong> ${maskCpfAsterisks(p.cpf)}</span>
-                                <span><strong>Tel:</strong> ${escapeHtmlValue(p.telefone)}</span>
+                                <span><strong>Tel:</strong> ${p.semTelefoneSeguro ? "Sem telefone seguro" : escapeHtmlValue(p.telefone || "-")}</span>
                             </div>
                             <div class="coordenacao-perfil-info">
-                                <strong>Endereço:</strong> ${escapeHtmlValue(p.endereco)}${p.enderecoNumero ? ", " + escapeHtmlValue(p.enderecoNumero) : ""}
+                                <strong>Endereço:</strong> ${p.enderecoSigiloso ? "Sigiloso (não informado)" : escapeHtmlValue(p.endereco || "Não informado") + (p.enderecoNumero ? ", " + escapeHtmlValue(p.enderecoNumero) : "")}
                             </div>
+                            ${p.acessoRestrito || p.situacaoJuridico ? `<div class="coordenacao-perfil-info" style="display:flex; gap:6px; flex-wrap:wrap;">
+                                ${p.acessoRestrito ? '<span class="soft-badge soft-badge--restrito">Acesso restrito</span>' : ""}
+                                ${p.situacaoJuridico ? '<span class="soft-badge soft-badge--juridico">Jurídico: ' + escapeHtmlValue({ encaminhada: "encaminhada", em_atendimento: "em atendimento", encerrado: "encerrado" }[p.situacaoJuridico] || p.situacaoJuridico) + '</span>' : ""}
+                            </div>` : ""}
                             <div class="coordenacao-perfil-info">
                                 <strong>Curso/Interesse:</strong> ${escapeHtmlValue(p.curso) || "Não informado"}
                             </div>

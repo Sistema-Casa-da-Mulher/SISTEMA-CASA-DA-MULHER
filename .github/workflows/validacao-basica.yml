@@ -43,6 +43,8 @@ jobs:
           node --check projetocasadamulher/telas/config.js
           node --check projetocasadamulher/telas/auth.js
           node --check projetocasadamulher/telas/app.js
+          node --check projetocasadamulher/telas/assistida-form.js
+          node --check projetocasadamulher/telas/juridico.js
           node --check scripts/validar-regras-eqp.mjs
           node --check scripts/validar-html-inline.mjs
 

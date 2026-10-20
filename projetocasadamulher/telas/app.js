@@ -772,6 +772,14 @@ async function setupPainel() {
         document.getElementById("linkProfessor")?.classList.remove("hidden");
     }
 
+    if (CasaMulherAuth.podeAcessar("juridico")) {
+        document.getElementById("linkJuridico")?.classList.remove("hidden");
+    }
+
+    if (usuario.perfil === "juridico") {
+        document.getElementById("cardOutrasAreas")?.classList.add("hidden");
+    }
+
     if (CasaMulherAuth.podeAcessar("auditoria")) {
         document.getElementById("linkAuditoria")?.classList.remove("hidden");
     }
