@@ -53,7 +53,7 @@ public class AssistidasController : ControllerBase
         lista = FiltrarPorBusca(lista, busca);
 
         var situacoes = await ObterSituacoesJuridicasAsync(lista.Select(a => a.Id).ToList(), cancellationToken);
-        return Ok(lista.Select(a => MapearResposta(a, situacoes.GetValueOrDefault(a.Id))).ToList());
+        return Ok(lista.Select(a => MapearResposta(a, situacoes.GetValueOrDefault(a.Id), usuario.Perfil)).ToList());
     }
 
     [HttpGet("{id:int}")]
@@ -67,7 +67,7 @@ public class AssistidasController : ControllerBase
         if (assistida is null) return NotFound(new { mensagem = "Assistida não encontrada." });
 
         var situacoes = await ObterSituacoesJuridicasAsync([assistida.Id], cancellationToken);
-        return Ok(MapearResposta(assistida, situacoes.GetValueOrDefault(assistida.Id)));
+        return Ok(MapearResposta(assistida, situacoes.GetValueOrDefault(assistida.Id), usuario.Perfil));
     }
 
     [HttpPost]
@@ -111,7 +111,9 @@ public class AssistidasController : ControllerBase
         }
 
         AplicarDados(assistida, request, cpf);
-        assistida.Origem = AssistidasService.AtuaComoJuridico(usuario.Perfil) ? AssistidaOrigem.Juridico : AssistidaOrigem.Recepcao;
+        assistida.Origem = usuario.Perfil == PerfisAcesso.Psicologia
+            ? AssistidaOrigem.Psicologia
+            : AssistidasService.AtuaComoJuridico(usuario.Perfil) ? AssistidaOrigem.Juridico : AssistidaOrigem.Recepcao;
         assistida.CadastradaPorUserId = usuario.UserId;
         assistida.CadastradaPorIdentificador = usuario.Identificador;
         assistida.CadastradaPorNome = usuario.Nome;
@@ -122,6 +124,11 @@ public class AssistidasController : ControllerBase
         if (assistida.Origem == AssistidaOrigem.Juridico)
         {
             assistida.EncaminhadaJuridicoEm ??= DateTime.UtcNow;
+        }
+
+        if (assistida.Origem == AssistidaOrigem.Psicologia)
+        {
+            assistida.EncaminhadaPsicologiaEm ??= DateTime.UtcNow;
         }
 
         if (existente is null)
@@ -137,7 +144,7 @@ public class AssistidasController : ControllerBase
             assistida.Id.ToString(CultureInfo.InvariantCulture),
             $"{usuario.Identificador} cadastrou a assistida #{assistida.Id} (origem: {assistida.Origem}).");
 
-        var resposta = MapearResposta(assistida, null);
+        var resposta = MapearResposta(assistida, null, usuario.Perfil);
         resposta.AvisoSnapshot = (await _snapshot.PersistAsync("assistida_cadastrada", CancellationToken.None)).AvisoSnapshot;
         return CreatedAtAction(nameof(Obter), new { id = assistida.Id }, resposta);
     }
@@ -172,7 +179,7 @@ public class AssistidasController : ControllerBase
             $"{usuario.Identificador} atualizou os dados básicos da assistida #{assistida.Id}.");
 
         var situacoes = await ObterSituacoesJuridicasAsync([assistida.Id], cancellationToken);
-        var resposta = MapearResposta(assistida, situacoes.GetValueOrDefault(assistida.Id));
+        var resposta = MapearResposta(assistida, situacoes.GetValueOrDefault(assistida.Id), usuario.Perfil);
         resposta.AvisoSnapshot = (await _snapshot.PersistAsync("assistida_atualizada", CancellationToken.None)).AvisoSnapshot;
         return Ok(resposta);
     }
@@ -242,9 +249,51 @@ public class AssistidasController : ControllerBase
                 : $"{usuario.Identificador} removeu o acesso restrito da assistida #{assistida.Id}.");
 
         var situacoes = await ObterSituacoesJuridicasAsync([assistida.Id], cancellationToken);
-        var resposta = MapearResposta(assistida, situacoes.GetValueOrDefault(assistida.Id));
+        var resposta = MapearResposta(assistida, situacoes.GetValueOrDefault(assistida.Id), usuario.Perfil);
         resposta.AvisoSnapshot = (await _snapshot.PersistAsync("assistida_restricao", CancellationToken.None)).AvisoSnapshot;
         return Ok(resposta);
+    }
+
+    /// <summary>
+    /// Encaminhamento interno: coloca a assistida na fila do Jurídico ou da Psicologia.
+    /// Não expõe nada do atendimento de origem.
+    /// </summary>
+    [HttpPost("{id:int}/encaminhar")]
+    [Authorize(Policy = PoliticasAcesso.CadastroAssistidas)]
+    public async Task<IActionResult> Encaminhar(int id, EncaminharAssistidaRequest request, CancellationToken cancellationToken)
+    {
+        var usuario = await _assistidas.ObterUsuarioAsync(User, cancellationToken);
+        if (usuario is null) return Unauthorized();
+
+        var assistida = await ConsultaVisivel(usuario).SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
+        if (assistida is null) return NotFound(new { mensagem = "Assistida não encontrada." });
+
+        string rotulo;
+        switch (request.Area)
+        {
+            case AssistidaOrigem.Juridico:
+                assistida.EncaminhadaJuridicoEm ??= DateTime.UtcNow;
+                rotulo = "Jurídico";
+                break;
+            case AssistidaOrigem.Psicologia:
+                assistida.EncaminhadaPsicologiaEm ??= DateTime.UtcNow;
+                rotulo = "Psicologia";
+                break;
+            default:
+                return BadRequest(new { mensagem = "Área de encaminhamento inválida." });
+        }
+
+        assistida.AtualizadoEm = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _auditoria.RegistrarAsync(
+            "ASSISTIDA_ENCAMINHADA",
+            "Assistida",
+            assistida.Id.ToString(CultureInfo.InvariantCulture),
+            $"{usuario.Identificador} encaminhou a assistida #{assistida.Id} para {rotulo}.");
+
+        var snapshot = await _snapshot.PersistAsync("assistida_encaminhada", CancellationToken.None);
+        return Ok(new { mensagem = $"Encaminhada para {rotulo}.", avisoSnapshot = snapshot.AvisoSnapshot });
     }
 
     /// <summary>Alunas do curso vinculado à professora. Restritas nunca aparecem.</summary>
@@ -326,6 +375,7 @@ public class AssistidasController : ControllerBase
                 DataNascimento = DateOnly.TryParse(item.DataNascimento, CultureInfo.InvariantCulture, out var data) ? data : null,
                 Direcionamento = curso,
                 EncaminhadaJuridicoEm = string.Equals(curso, AssistidasService.DirecionamentoJuridico, StringComparison.OrdinalIgnoreCase) ? agora : null,
+                EncaminhadaPsicologiaEm = string.Equals(curso, AssistidasService.DirecionamentoPsicologia, StringComparison.OrdinalIgnoreCase) ? agora : null,
                 Email = Limitar((item.EmailAssistida ?? item.Email)?.Trim(), 256),
                 Endereco = Limitar(item.Endereco?.Trim(), 200),
                 EnderecoNumero = Limitar(item.EnderecoNumero?.Trim(), 60),
@@ -489,9 +539,43 @@ public class AssistidasController : ControllerBase
         {
             assistida.EncaminhadaJuridicoEm ??= DateTime.UtcNow;
         }
+
+        if (request.EncaminharPsicologia
+            || string.Equals(assistida.Direcionamento, AssistidasService.DirecionamentoPsicologia, StringComparison.OrdinalIgnoreCase))
+        {
+            assistida.EncaminhadaPsicologiaEm ??= DateTime.UtcNow;
+        }
     }
 
-    internal static AssistidaResponse MapearResposta(Assistida a, string? situacaoJuridico)
+    /// <summary>
+    /// Monta os dados básicos. Para quem não é da Psicologia, esconde qualquer pista de
+    /// acompanhamento psicológico (quem cadastrou e o encaminhamento), conforme o sigilo.
+    /// </summary>
+    internal static AssistidaResponse MapearResposta(Assistida a, string? situacaoJuridico, string perfilViewer)
+    {
+        var resposta = MapearDados(a, situacaoJuridico);
+
+        if (!AssistidasService.AtuaComoPsicologia(perfilViewer))
+        {
+            if (a.Origem == AssistidaOrigem.Psicologia)
+            {
+                resposta.Origem = "equipe_tecnica";
+                resposta.FuncionarioAtendimentoId = string.Empty;
+                resposta.FuncionarioAtendimentoNomeSnapshot = "Equipe técnica da Casa";
+                resposta.FuncionarioAtendimentoEmailSnapshot = null;
+            }
+
+            // O Jurídico pode saber do encaminhamento; Recepção e demais perfis não.
+            if (!AssistidasService.AtuaComoJuridico(perfilViewer))
+            {
+                resposta.EncaminhadaPsicologia = false;
+            }
+        }
+
+        return resposta;
+    }
+
+    private static AssistidaResponse MapearDados(Assistida a, string? situacaoJuridico)
     {
         return new AssistidaResponse
         {
@@ -518,6 +602,7 @@ public class AssistidasController : ControllerBase
             Curso = a.Direcionamento,
             EncaminhadaJuridico = a.EncaminhadaJuridicoEm is not null,
             EncaminhadaJuridicoEm = a.EncaminhadaJuridicoEm,
+            EncaminhadaPsicologia = a.EncaminhadaPsicologiaEm is not null,
             SituacaoJuridico = situacaoJuridico ?? (a.EncaminhadaJuridicoEm is not null ? "encaminhada" : null),
             Observacoes = a.Observacoes,
             Origem = a.Origem,

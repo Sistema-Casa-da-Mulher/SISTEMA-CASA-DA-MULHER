@@ -149,6 +149,7 @@
             uf: valor(form, "uf") || null,
             direcionamento: valor(form, "curso") || null,
             encaminharJuridico: Boolean(valor(form, "encaminharJuridico")),
+            encaminharPsicologia: Boolean(valor(form, "encaminharPsicologia")),
             observacoes: valor(form, "observacoes") || null
         };
     }
@@ -190,6 +191,7 @@
         set("uf", a.uf);
         set("curso", a.direcionamento);
         set("encaminharJuridico", a.encaminhadaJuridico);
+        set("encaminharPsicologia", a.encaminhadaPsicologia);
         set("observacoes", a.observacoes);
         atualizarEstados(form);
     }

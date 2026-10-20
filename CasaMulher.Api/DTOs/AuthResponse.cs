@@ -13,6 +13,7 @@ public class AuthResponse
     public string Perfil { get; set; } = string.Empty;
 
     public string? ProfessorCurso { get; set; }
+    public string? Crp { get; set; }
 
     public string IdentificadorFuncionario { get; set; } = string.Empty;
 

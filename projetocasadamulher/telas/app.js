@@ -15,6 +15,7 @@ const PERFIS_LABEL = {
     professor: "Professor",
     as_social: "Assistente Social",
     juridico: "Jurídico",
+    psicologia: "Psicologia",
     equipe: "Equipe do projeto"
 };
 const PERFIS_FUNCIONARIOS_LABEL = {
@@ -22,7 +23,8 @@ const PERFIS_FUNCIONARIOS_LABEL = {
     recepcao: PERFIS_LABEL.recepcao,
     professor: PERFIS_LABEL.professor,
     as_social: PERFIS_LABEL.as_social,
-    juridico: PERFIS_LABEL.juridico
+    juridico: PERFIS_LABEL.juridico,
+    psicologia: PERFIS_LABEL.psicologia
 };
 
 function setMessage(element, text, type) {
@@ -776,7 +778,11 @@ async function setupPainel() {
         document.getElementById("linkJuridico")?.classList.remove("hidden");
     }
 
-    if (usuario.perfil === "juridico") {
+    if (CasaMulherAuth.podeAcessar("psicologia")) {
+        document.getElementById("linkPsicologia")?.classList.remove("hidden");
+    }
+
+    if (usuario.perfil === "juridico" || usuario.perfil === "psicologia") {
         document.getElementById("cardOutrasAreas")?.classList.add("hidden");
     }
 
@@ -1024,6 +1030,14 @@ async function setupConvites() {
         enviarConvite(false);
     });
 
+    const convitePerfilSelect = document.getElementById("convitePerfil");
+    const grupoCrp = document.getElementById("grupoConviteCrp");
+    if (convitePerfilSelect && grupoCrp) {
+        convitePerfilSelect.addEventListener("change", () => {
+            grupoCrp.classList.toggle("hidden", convitePerfilSelect.value !== "psicologia");
+        });
+    }
+
     async function enviarConvite(vindoDoModal) {
         if (!form.reportValidity()) {
             return;
@@ -1071,6 +1085,16 @@ async function setupConvites() {
 
         if (perfil === "professor") {
             dados.professorCurso = cursoProfessorSelect.value;
+        }
+
+        if (perfil === "psicologia") {
+            dados.crp = document.getElementById("conviteCrp").value.trim();
+            if (!dados.crp) {
+                setMessage(mensagem, "Informe o CRP da psicóloga.", "error");
+                disableSubmit(form, false);
+                window.clearTimeout(timeoutId);
+                return;
+            }
         }
 
         try {

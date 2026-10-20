@@ -34,6 +34,7 @@ public sealed class AssistidasService
     };
 
     public const string DirecionamentoJuridico = "Juridica";
+    public const string DirecionamentoPsicologia = "Psicologa";
 
     private readonly AppDbContext _dbContext;
     private readonly ILogger<AssistidasService> _logger;
@@ -75,15 +76,21 @@ public sealed class AssistidasService
         return perfil is PerfisAcesso.Juridico or PerfisAcesso.Equipe;
     }
 
+    /// <summary>Perfis que trabalham como Psicologia (EQP só chega aqui em dev/homologação).</summary>
+    public static bool AtuaComoPsicologia(string perfil)
+    {
+        return perfil is PerfisAcesso.Psicologia or PerfisAcesso.Equipe;
+    }
+
     /// <summary>Quem enxerga assistidas com acesso restrito.</summary>
     public static bool PodeVerRestritas(string perfil)
     {
-        return perfil is PerfisAcesso.Adm or PerfisAcesso.Juridico or PerfisAcesso.Equipe;
+        return perfil is PerfisAcesso.Adm or PerfisAcesso.Juridico or PerfisAcesso.Psicologia or PerfisAcesso.Equipe;
     }
 
     public static bool PodeAlterarRestricao(string perfil)
     {
-        return perfil is PerfisAcesso.Adm or PerfisAcesso.Juridico or PerfisAcesso.Equipe;
+        return perfil is PerfisAcesso.Adm or PerfisAcesso.Juridico or PerfisAcesso.Psicologia or PerfisAcesso.Equipe;
     }
 
     public static bool PodeRemover(string perfil)
@@ -206,6 +213,7 @@ public sealed class AssistidasService
                 DataNascimento = DateOnly.TryParse(item.DataNascimento, CultureInfo.InvariantCulture, out var data) ? data : null,
                 Direcionamento = string.IsNullOrWhiteSpace(item.Curso) ? null : item.Curso.Trim(),
                 EncaminhadaJuridicoEm = string.Equals(item.Curso, DirecionamentoJuridico, StringComparison.OrdinalIgnoreCase) ? agora : null,
+                EncaminhadaPsicologiaEm = string.Equals(item.Curso, DirecionamentoPsicologia, StringComparison.OrdinalIgnoreCase) ? agora : null,
                 Email = string.IsNullOrWhiteSpace(item.Email) ? null : item.Email.Trim(),
                 Endereco = string.IsNullOrWhiteSpace(item.Endereco) ? null : item.Endereco.Trim(),
                 Observacoes = string.IsNullOrWhiteSpace(item.Observacoes) ? null : item.Observacoes.Trim(),

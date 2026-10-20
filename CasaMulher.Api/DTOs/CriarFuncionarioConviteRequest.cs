@@ -25,6 +25,9 @@ public class CriarFuncionarioConviteRequest
     [MaxLength(80)]
     public string? ProfessorCurso { get; set; }
 
+    [MaxLength(20)]
+    public string? Crp { get; set; }
+
     [Range(1, 90)]
     public int DiasParaExpirar { get; set; } = 7;
 

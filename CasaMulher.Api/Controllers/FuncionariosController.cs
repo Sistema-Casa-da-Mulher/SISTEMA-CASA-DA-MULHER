@@ -429,6 +429,7 @@ public class FuncionariosController : ControllerBase
     {
         return string.Equals(perfil, PerfisAcesso.Adm, StringComparison.OrdinalIgnoreCase)
             || string.Equals(perfil, PerfisAcesso.Juridico, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(perfil, PerfisAcesso.Psicologia, StringComparison.OrdinalIgnoreCase)
             || string.Equals(perfil, PerfisAcesso.AssistenteSocial, StringComparison.OrdinalIgnoreCase);
     }
 }

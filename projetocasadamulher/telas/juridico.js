@@ -83,6 +83,7 @@ function bindEventos() {
     document.getElementById("btnCancelarCadastro").addEventListener("click", cancelarCadastro);
 
     document.getElementById("btnCorrigirDados").addEventListener("click", corrigirDados);
+    document.getElementById("btnEncaminharPsicologia").addEventListener("click", encaminharPsicologia);
     document.getElementById("btnRestricao").addEventListener("click", alternarRestricao);
     document.getElementById("btnAtribuir").addEventListener("click", atribuirResponsavel);
     document.getElementById("btnVisibilidade").addEventListener("click", salvarVisibilidade);
@@ -341,6 +342,8 @@ function renderizarFicha() {
     if (a.acessoRestrito) badges.push(`<span class="soft-badge soft-badge--restrito">Acesso restrito · ${esc(AF().ROTULOS_MOTIVO_RESTRICAO[a.motivoRestricao] || "")}</span>`);
     if (a.origem === "juridico") badges.push('<span class="soft-badge soft-badge--juridico">Cadastrada pelo Jurídico</span>');
     if (f.atendimentos.length) badges.push(`<span class="soft-badge">${esc(ROTULOS_SITUACAO[f.situacao] || f.situacao)}</span>`);
+    if (f.acompanhamentoPsicologico) badges.push('<span class="soft-badge soft-badge--psicologia">Em acompanhamento na Psicologia</span>');
+    else if (f.encaminhadaPsicologia) badges.push('<span class="soft-badge soft-badge--psicologia">Encaminhada à Psicologia</span>');
     document.getElementById("fichaBadges").innerHTML = badges.join("");
 
     const dados = [
@@ -350,7 +353,7 @@ function renderizarFicha() {
         ["Observação de contato", a.contatoSeguroObservacao || "-"],
         ["Endereço", AF().formatarEndereco(a)],
         ["E-mail", a.email || "-"],
-        ["Cadastrada por", `${a.funcionarioAtendimentoNomeSnapshot || "-"} (${a.origem === "juridico" ? "Jurídico" : "Recepção"})`],
+        ["Cadastrada por", `${a.funcionarioAtendimentoNomeSnapshot || "-"}${({ juridico: " (Jurídico)", recepcao: " (Recepção)" })[a.origem] || ""}`],
         ["Encaminhada ao Jurídico", a.encaminhadaJuridicoEm ? AF().formatarData(a.encaminhadaJuridicoEm) : "-"]
     ];
     document.getElementById("fichaDados").innerHTML = dados
@@ -358,6 +361,8 @@ function renderizarFicha() {
         .join("");
 
     document.getElementById("btnCorrigirDados").classList.toggle("hidden", !ehJuridico);
+    document.getElementById("btnEncaminharPsicologia").classList.toggle("hidden", !ehJuridico || f.encaminhadaPsicologia);
+    document.getElementById("fichaRiscoPsicologico").classList.toggle("hidden", !f.alertaRiscoPsicologico);
     const motivo = document.getElementById("motivoRestricao");
     const btnRestricao = document.getElementById("btnRestricao");
     motivo.value = a.motivoRestricao || "";
@@ -619,5 +624,19 @@ async function pedirEmergencia() {
 
     document.getElementById("motivoEmergencia").value = "";
     mostrarMensagem("Acesso de emergência liberado por 12 horas. As responsáveis foram avisadas.", "success");
+    await abrirFicha(fichaAtual.assistida.id);
+}
+
+async function encaminharPsicologia() {
+    if (!fichaAtual) return;
+    if (!confirm("Encaminhar esta assistida para a fila da Psicologia? Nada do atendimento jurídico é compartilhado.")) return;
+
+    const response = await api(`/api/assistidas/${fichaAtual.assistida.id}/encaminhar`, { method: "POST", body: { area: "psicologia" } });
+    if (!response.ok) {
+        mostrarMensagem(await erroDe(response, "Não foi possível encaminhar."), "error");
+        return;
+    }
+
+    mostrarMensagem("Assistida encaminhada à Psicologia.", "success");
     await abrirFicha(fichaAtual.assistida.id);
 }

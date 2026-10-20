@@ -48,6 +48,9 @@ public class Assistida
     /// <summary>Preenchido quando a assistida é encaminhada ao Jurídico.</summary>
     public DateTime? EncaminhadaJuridicoEm { get; set; }
 
+    /// <summary>Preenchido quando a assistida é encaminhada à Psicologia.</summary>
+    public DateTime? EncaminhadaPsicologiaEm { get; set; }
+
     public string? Observacoes { get; set; }
 
     /// <summary>recepcao ou juridico: por qual porta o cadastro entrou.</summary>
@@ -82,6 +85,7 @@ public static class AssistidaOrigem
 {
     public const string Recepcao = "recepcao";
     public const string Juridico = "juridico";
+    public const string Psicologia = "psicologia";
 }
 
 public static class AssistidaContatoSeguro

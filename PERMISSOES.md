@@ -13,6 +13,7 @@ Importante: esconder botoes no front-end melhora a usabilidade, mas nao e a segu
 | `professor` | Atividades de curso, frequencia e informacoes educacionais. |
 | `as_social` | Acompanhamento social/psicologico e prontuario social. |
 | `juridico` | Atendimento juridico e orientacao legal. |
+| `psicologia` | Atendimento psicologico e prontuario psicologico (CRP obrigatorio no convite). |
 
 ## Matriz
 
@@ -41,8 +42,9 @@ Importante: esconder botoes no front-end melhora a usabilidade, mas nao e a segu
 | `AcessoCursos` | `adm`, `professor` | Cursos, frequencia e atividades educacionais. |
 | `AcessoProntuarioSocial` | `adm`, `as_social` | Prontuario social e acompanhamento. |
 | `AcessoJuridico` | `adm`, `juridico` | Atendimento juridico. |
+| `AcessoPsicologia` | `adm`, `psicologia` | Psicologia. A coordenacao so acessa os indicadores. |
 | `AcessoRelatorios` | `adm`, `as_social`, `juridico` | Relatorios gerais permitidos a coordenacao e areas tecnicas. |
-| `CadastroAssistidas` | `adm`, `recepcao`, `as_social`, `juridico` | Cadastro unico das assistidas (`/api/assistidas`). |
+| `CadastroAssistidas` | `adm`, `recepcao`, `as_social`, `juridico`, `psicologia` | Cadastro unico das assistidas (`/api/assistidas`). |
 
 ## Areas do front-end
 
@@ -58,6 +60,7 @@ O helper `CasaMulherAuth.podeAcessar(area)` usa as mesmas areas conceituais:
 | `cursos` | `adm`, `professor` |
 | `social` | `adm`, `as_social` |
 | `juridico` | `adm`, `juridico` |
+| `psicologia` | `adm`, `psicologia` |
 | `relatorios` | `adm`, `as_social`, `juridico` |
 
 ## Cadastro unico e Juridico
@@ -70,3 +73,15 @@ O helper `CasaMulherAuth.podeAcessar(area)` usa as mesmas areas conceituais:
 - **Coordenacao (ADM)** ve apenas metadados dos atendimentos (protocolo, data, profissional, situacao), nunca o relato.
 - Atendimentos tem protocolo sequencial gerado no servidor (`CJ-AAAA-NNNNNN`) e nao podem ser editados nem apagados; correcoes entram como adendo.
 - Leitura de atendimentos juridicos tambem e auditada (`JURIDICO_CASO_VISUALIZADO`).
+
+## Psicologia
+
+- Perfil proprio `psicologia` (ID `PSI-000001`), separado do `as_social`. O convite exige o CRP, que vai para a conta e para a declaracao de comparecimento.
+- Recepcao, Juridico e a propria Psicologia podem cadastrar e encaminhar; o cadastro e a mesma ficha unica.
+- Prontuario por assistida com numero gerado no servidor (`PSI-AAAA-NNNNNN`) e sessoes numeradas. Sessao salva nao e editada nem apagada; correcoes entram como adendo. O prontuario nunca e excluido (guarda minima de 5 anos), so encerrado.
+- **Visibilidade padrao: somente a psicologa responsavel.** A responsavel pode abrir para a equipe de Psicologia. Outras psicologas so veem que a sessao existiu (numero, data, profissional) e podem pedir acesso de emergencia (12 horas, auditado, responsaveis avisadas).
+- Primeira sessao com comparecimento exige registrar que a assistida foi informada sobre o sigilo e seus limites.
+- Classificacao de risco em cada sessao. Risco alto ou iminente gera alerta na ficha com condutas e contatos (CAPS, SAMU 192, CVV 188); o alerta sai quando um risco menor e registrado. Nada e enviado para fora do sistema.
+- **Juridico** ve apenas "em acompanhamento na Psicologia" e o alerta de risco, sem conteudo. **Recepcao** nao ve nada da Psicologia. **Coordenacao** ve so os indicadores (numeros sem nome).
+- Declaracao de comparecimento impressa sem nenhum conteudo da sessao.
+- Sem campo de diagnostico/CID; grupos de apoio ficam para uma fase futura.

@@ -115,7 +115,7 @@ public class JuridicoController : ControllerBase
 
         var resposta = new CasoJuridicoDetalheResponse
         {
-            Assistida = AssistidasController.MapearResposta(assistida, null),
+            Assistida = AssistidasController.MapearResposta(assistida, null, usuario.Perfil),
             CasoId = caso?.Id,
             Visibilidade = caso?.Visibilidade ?? CasoJuridicoVisibilidade.Equipe,
             Situacao = caso?.Situacao ?? CasoJuridicoSituacao.EmAndamento,
@@ -132,6 +132,17 @@ public class JuridicoController : ControllerBase
                 .Select(at => MapearAtendimento(at, acesso.PodeVerConteudo))
                 .ToList() ?? []
         };
+
+        if (acesso.AtuaComoJuridico)
+        {
+            var psicologico = await _dbContext.ProntuariosPsicologicos.AsNoTracking()
+                .Where(p => p.AssistidaId == assistidaId && p.Situacao == ProntuarioSituacao.EmAcompanhamento && p.Sessoes.Any())
+                .Select(p => new { p.RiscoAtual })
+                .FirstOrDefaultAsync(cancellationToken);
+            resposta.AcompanhamentoPsicologico = psicologico is not null;
+            resposta.AlertaRiscoPsicologico = psicologico is not null && PsicologiaCatalogo.RiscoElevado(psicologico.RiscoAtual);
+            resposta.EncaminhadaPsicologia = assistida.EncaminhadaPsicologiaEm is not null;
+        }
 
         // Remove o que é do Jurídico para quem só pode ver metadados.
         if (!acesso.PodeVerConteudo)

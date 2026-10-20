@@ -26,6 +26,7 @@
         cursos: ["adm", "professor"],
         social: ["adm", "as_social"],
         juridico: ["adm", "juridico"],
+        psicologia: ["adm", "psicologia"],
         relatorios: ["adm", "as_social", "juridico"]
     };
 
@@ -38,6 +39,7 @@
         "cursos",
         "social",
         "juridico",
+        "psicologia",
         "relatorios"
     ];
 

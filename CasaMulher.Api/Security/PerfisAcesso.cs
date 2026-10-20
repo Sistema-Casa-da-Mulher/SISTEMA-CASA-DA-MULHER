@@ -7,6 +7,7 @@ public static class PerfisAcesso
     public const string Professor = "professor";
     public const string AssistenteSocial = "as_social";
     public const string Juridico = "juridico";
+    public const string Psicologia = "psicologia";
     public const string Equipe = "equipe";
 
     public static readonly string[] Todos =
@@ -16,6 +17,7 @@ public static class PerfisAcesso
         Professor,
         AssistenteSocial,
         Juridico,
+        Psicologia,
         Equipe
     ];
 
@@ -25,7 +27,8 @@ public static class PerfisAcesso
         Recepcao,
         Professor,
         AssistenteSocial,
-        Juridico
+        Juridico,
+        Psicologia
     ];
 
     public static bool EhValido(string perfil)

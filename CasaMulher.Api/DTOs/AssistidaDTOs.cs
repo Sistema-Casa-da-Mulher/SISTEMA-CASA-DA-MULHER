@@ -19,7 +19,14 @@ public class AssistidaRequest
     public string? Uf { get; set; }
     public string? Direcionamento { get; set; }
     public bool EncaminharJuridico { get; set; }
+    public bool EncaminharPsicologia { get; set; }
     public string? Observacoes { get; set; }
+}
+
+public class EncaminharAssistidaRequest
+{
+    /// <summary>juridico ou psicologia.</summary>
+    public string Area { get; set; } = string.Empty;
 }
 
 public class AlterarRestricaoAssistidaRequest
@@ -88,6 +95,7 @@ public class AssistidaResponse
     public string? Curso { get; set; }
     public bool EncaminhadaJuridico { get; set; }
     public DateTime? EncaminhadaJuridicoEm { get; set; }
+    public bool EncaminhadaPsicologia { get; set; }
     public string? SituacaoJuridico { get; set; }
     public string? Observacoes { get; set; }
     public string Origem { get; set; } = string.Empty;

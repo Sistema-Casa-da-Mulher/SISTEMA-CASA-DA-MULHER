@@ -67,6 +67,7 @@ public class GeradorIdentificadorFuncionarioService : IFuncionarioIdentificadorS
             PerfisAcesso.Professor => "PRO",
             PerfisAcesso.AssistenteSocial => "SOC",
             PerfisAcesso.Juridico => "JUR",
+            PerfisAcesso.Psicologia => "PSI",
             PerfisAcesso.Equipe => "EQP",
             _ => throw new ArgumentException("Perfil inválido para gerar identificador.", nameof(perfil))
         };

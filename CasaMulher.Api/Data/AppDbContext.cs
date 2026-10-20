@@ -1,6 +1,7 @@
 using CasaMulher.Api.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CasaMulher.Api.Data;
 
@@ -50,6 +51,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<CasoJuridicoAcessoEmergencia> CasosJuridicosAcessosEmergencia => Set<CasoJuridicoAcessoEmergencia>();
 
+    public DbSet<ProntuarioPsicologico> ProntuariosPsicologicos => Set<ProntuarioPsicologico>();
+
+    public DbSet<ProntuarioPsicologicoResponsavel> ProntuariosPsicologicosResponsaveis => Set<ProntuarioPsicologicoResponsavel>();
+
+    public DbSet<SessaoPsicologica> SessoesPsicologicas => Set<SessaoPsicologica>();
+
+    public DbSet<SessaoPsicologicaAdendo> SessoesPsicologicasAdendos => Set<SessaoPsicologicaAdendo>();
+
+    public DbSet<ProntuarioPsicologicoAcessoEmergencia> ProntuariosPsicologicosAcessosEmergencia => Set<ProntuarioPsicologicoAcessoEmergencia>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -73,6 +84,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
             entity.Property(user => user.EmailRecuperacao)
                 .HasMaxLength(256);
+
+            entity.Property(user => user.Crp)
+                .HasMaxLength(20);
         });
 
         builder.Entity<UserLoginIdentifier>(entity =>
@@ -128,6 +142,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .IsRequired();
 
             entity.HasIndex(convite => convite.IdentificadorFuncionario);
+
+            entity.Property(convite => convite.Crp)
+                .HasMaxLength(20);
 
             entity.Property(convite => convite.CodigoHash)
                 .HasMaxLength(128)
@@ -396,6 +413,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(a => a.Cpf).IsUnique();
             entity.HasIndex(a => a.Nome);
             entity.HasIndex(a => a.EncaminhadaJuridicoEm);
+            entity.HasIndex(a => a.EncaminhadaPsicologiaEm);
 
             entity.Property(a => a.Nome).IsRequired().HasMaxLength(160);
             entity.Property(a => a.Cpf).IsRequired().HasMaxLength(11);
@@ -504,5 +522,121 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(a => a.CasoJuridicoId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        builder.Entity<ProntuarioPsicologico>(entity =>
+        {
+            entity.ToTable("ProntuariosPsicologicos");
+            entity.HasIndex(p => p.AssistidaId).IsUnique();
+            entity.HasIndex(p => p.Numero).IsUnique();
+            entity.HasIndex(p => new { p.Ano, p.Sequencial }).IsUnique();
+            entity.Property(p => p.Numero).IsRequired().HasMaxLength(20);
+            entity.Property(p => p.Visibilidade).IsRequired().HasMaxLength(20);
+            entity.Property(p => p.Situacao).IsRequired().HasMaxLength(30);
+            entity.Property(p => p.MotivoEncerramento).HasMaxLength(40);
+            entity.Property(p => p.RiscoAtual).HasMaxLength(20);
+            entity.Property(p => p.ConsentimentoPorIdentificador).HasMaxLength(80);
+
+            // Restrict: o prontuário psicológico tem guarda obrigatória e nunca some com o cadastro.
+            entity.HasOne(p => p.Assistida)
+                .WithMany()
+                .HasForeignKey(p => p.AssistidaId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ProntuarioPsicologicoResponsavel>(entity =>
+        {
+            entity.ToTable("ProntuariosPsicologicosResponsaveis");
+            entity.HasIndex(r => new { r.ProntuarioPsicologicoId, r.UserId }).IsUnique();
+            entity.HasIndex(r => r.UserId);
+            entity.Property(r => r.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(r => r.Identificador).IsRequired().HasMaxLength(80);
+            entity.Property(r => r.Nome).IsRequired().HasMaxLength(160);
+            entity.Property(r => r.Crp).HasMaxLength(20);
+            entity.Property(r => r.AtribuidoPorIdentificador).IsRequired().HasMaxLength(80);
+
+            entity.HasOne(r => r.Prontuario)
+                .WithMany(p => p.Responsaveis)
+                .HasForeignKey(r => r.ProntuarioPsicologicoId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<SessaoPsicologica>(entity =>
+        {
+            entity.ToTable("SessoesPsicologicas");
+            entity.HasIndex(s => new { s.ProntuarioPsicologicoId, s.Numero }).IsUnique();
+            entity.HasIndex(s => s.CriadoEm);
+            entity.Property(s => s.ProfissionalUserId).IsRequired().HasMaxLength(450);
+            entity.Property(s => s.ProfissionalIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(s => s.ProfissionalNome).IsRequired().HasMaxLength(160);
+            entity.Property(s => s.ProfissionalCrp).HasMaxLength(20);
+            entity.Property(s => s.TipoAtendimento).IsRequired().HasMaxLength(30);
+            entity.Property(s => s.Presenca).IsRequired().HasMaxLength(30);
+            entity.Property(s => s.Modalidade).HasMaxLength(20);
+            entity.Property(s => s.Demanda).HasMaxLength(500);
+            entity.Property(s => s.Evolucao).HasMaxLength(5000);
+            entity.Property(s => s.Plano).HasMaxLength(1000);
+            entity.Property(s => s.Risco).HasMaxLength(20);
+            entity.Property(s => s.EncaminhamentosExternos).HasMaxLength(200);
+            entity.Property(s => s.EncaminhamentoExternoOutro).HasMaxLength(120);
+
+            entity.HasOne(s => s.Prontuario)
+                .WithMany(p => p.Sessoes)
+                .HasForeignKey(s => s.ProntuarioPsicologicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<SessaoPsicologicaAdendo>(entity =>
+        {
+            entity.ToTable("SessoesPsicologicasAdendos");
+            entity.Property(a => a.Texto).IsRequired().HasMaxLength(2000);
+            entity.Property(a => a.AutorUserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.AutorIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(a => a.AutorNome).IsRequired().HasMaxLength(160);
+
+            entity.HasOne(a => a.Sessao)
+                .WithMany(s => s.Adendos)
+                .HasForeignKey(a => a.SessaoPsicologicaId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ProntuarioPsicologicoAcessoEmergencia>(entity =>
+        {
+            entity.ToTable("ProntuariosPsicologicosAcessosEmergencia");
+            entity.HasIndex(a => new { a.ProntuarioPsicologicoId, a.UserId });
+            entity.Property(a => a.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.Identificador).IsRequired().HasMaxLength(80);
+            entity.Property(a => a.Nome).IsRequired().HasMaxLength(160);
+            entity.Property(a => a.Motivo).IsRequired().HasMaxLength(500);
+
+            entity.HasOne(a => a.Prontuario)
+                .WithMany()
+                .HasForeignKey(a => a.ProntuarioPsicologicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // O sistema grava tudo em UTC, mas o SQLite devolve as datas sem fuso.
+        // Marca como UTC na leitura para a API responder com "Z" e o navegador
+        // mostrar o horário local correto.
+        var utcConverter = new ValueConverter<DateTime, DateTime>(
+            valor => valor,
+            valor => DateTime.SpecifyKind(valor, DateTimeKind.Utc));
+        var utcNullableConverter = new ValueConverter<DateTime?, DateTime?>(
+            valor => valor,
+            valor => valor.HasValue ? DateTime.SpecifyKind(valor.Value, DateTimeKind.Utc) : valor);
+
+        foreach (var entityType in builder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(utcConverter);
+                }
+                else if (property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(utcNullableConverter);
+                }
+            }
+        }
     }
 }

@@ -127,6 +127,18 @@ public class ConvitesFuncionariosController : ControllerBase
             request.ProfessorCurso = null; // Ignora se não for professor
         }
 
+        if (perfil == PerfisAcesso.Psicologia)
+        {
+            if (string.IsNullOrWhiteSpace(request.Crp))
+            {
+                return BadRequest(new { mensagem = "O CRP é obrigatório para o perfil Psicologia." });
+            }
+        }
+        else
+        {
+            request.Crp = null;
+        }
+
         var usuarioExistente = await _userManager.FindByEmailAsync(email);
 
         if (usuarioExistente is not null)
@@ -147,6 +159,7 @@ public class ConvitesFuncionariosController : ControllerBase
             Email = email,
             Perfil = perfil,
             ProfessorCurso = request.ProfessorCurso?.Trim(),
+            Crp = request.Crp?.Trim(),
             IdentificadorFuncionario = identificadorFuncionario,
             CodigoHash = _codigoService.GerarHash(codigoCadastro),
             ExpiraEm = DateTime.UtcNow.AddDays(request.DiasParaExpirar)

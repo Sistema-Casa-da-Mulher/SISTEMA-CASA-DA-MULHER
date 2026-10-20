@@ -146,10 +146,10 @@
         }
     </style>
     <script src="config.js" defer></script>
-    <script src="auth.js" defer></script>
-    <script src="app.js?v=14" defer></script>
-    <script src="assistida-form.js?v=1" defer></script>
-    <script src="juridico.js?v=1" defer></script>
+    <script src="auth.js?v=2" defer></script>
+    <script src="app.js?v=15" defer></script>
+    <script src="assistida-form.js?v=2" defer></script>
+    <script src="juridico.js?v=3" defer></script>
 </head>
 <body class="soft-page">
     <main id="juridicoPage" style="max-width: 1400px; margin: 0 auto; padding: 24px 20px;">
@@ -323,6 +323,9 @@
 
             <!-- FICHA DA ASSISTIDA -->
             <section class="juridico-panel" data-panel="ficha">
+                <div id="fichaRiscoPsicologico" class="soft-alert soft-alert--risco hidden">
+                    A Psicologia registrou risco alto para esta assistida. Os detalhes s&atilde;o sigilosos; em caso de d&uacute;vida, fale com a psic&oacute;loga respons&aacute;vel antes de agir.
+                </div>
                 <div id="fichaRestrito" class="soft-alert soft-alert--restrito hidden">
                     Acesso restrito: n&atilde;o confirme a ningu&eacute;m que esta mulher &eacute; atendida pela Casa, nem por telefone, nem pessoalmente.
                 </div>
@@ -333,6 +336,7 @@
                     <dl class="juridico-dados" id="fichaDados"></dl>
                     <div class="juridico-linha-acoes">
                         <button type="button" id="btnCorrigirDados" class="soft-btn soft-btn-warning">Corrigir dados</button>
+                        <button type="button" id="btnEncaminharPsicologia" class="soft-btn soft-btn-warning">Encaminhar &agrave; Psicologia</button>
                         <select id="motivoRestricao" class="soft-input" style="max-width: 320px;">
                             <option value="">Motivo do acesso restrito...</option>
                             <option value="segredo_justica">Processo em segredo de justi&ccedil;a</option>

@@ -3476,3 +3476,44 @@ dd.responsavel-meta {
 textarea.soft-input {
     font-family: inherit;
 }
+
+.painel-action-card--psicologia {
+    background: linear-gradient(135deg, #E6F0F5 0%, #CFE1EC 100%);
+    border: 1px solid #B9D3E2;
+}
+
+.painel-action-card--psicologia:hover {
+    background: linear-gradient(135deg, #F0F6F9 0%, #DCEAF2 100%);
+    border-color: #B9D3E2;
+}
+
+.painel-action-card--psicologia .painel-action-card-title {
+    color: #3E6680;
+}
+
+.painel-action-card--psicologia .painel-action-card-subtitle {
+    color: #5C809A;
+}
+
+.soft-badge--psicologia {
+    background: #E6F0F5;
+    color: #3E6680;
+    border-color: #B9D3E2;
+}
+
+.soft-badge--risco {
+    background: #FDE8E8;
+    color: #A23B3B;
+    border-color: #F5B5B5;
+}
+
+.soft-alert--risco {
+    background: #FDECEC;
+    color: #8E2F2F;
+    border-color: #F5B5B5;
+}
+
+.soft-alert--risco ul {
+    margin: 8px 0 0 18px;
+    padding: 0;
+}

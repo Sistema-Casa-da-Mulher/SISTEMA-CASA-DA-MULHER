@@ -14,6 +14,8 @@ public class FuncionarioConvite
 
     public string? ProfessorCurso { get; set; }
 
+    public string? Crp { get; set; }
+
     public string CodigoHash { get; set; } = string.Empty;
 
     public bool Usado { get; set; }

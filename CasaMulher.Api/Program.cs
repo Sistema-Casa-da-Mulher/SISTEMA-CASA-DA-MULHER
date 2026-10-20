@@ -149,8 +149,9 @@ var rolesRecepcao = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, Perfis
 var rolesCursos = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Professor);
 var rolesProntuarioSocial = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.AssistenteSocial);
 var rolesJuridico = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Juridico);
+var rolesPsicologia = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Psicologia);
 var rolesRelatorios = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.AssistenteSocial, PerfisAcesso.Juridico);
-var rolesCadastroAssistidas = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Recepcao, PerfisAcesso.AssistenteSocial, PerfisAcesso.Juridico);
+var rolesCadastroAssistidas = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Recepcao, PerfisAcesso.AssistenteSocial, PerfisAcesso.Juridico, PerfisAcesso.Psicologia);
 
 builder.Services.AddAuthorization(options =>
 {
@@ -172,6 +173,10 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy(PoliticasAcesso.AcessoJuridico, policy =>
         policy.RequireRole(rolesJuridico)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
+
+    options.AddPolicy(PoliticasAcesso.AcessoPsicologia, policy =>
+        policy.RequireRole(rolesPsicologia)
             .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 
     options.AddPolicy(PoliticasAcesso.AcessoRelatorios, policy =>

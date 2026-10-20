@@ -112,6 +112,7 @@ public partial class AuthController : ControllerBase
             Email = convite.Email,
             Perfil = convite.Perfil,
             ProfessorCurso = convite.ProfessorCurso,
+            Crp = convite.Crp,
             IdentificadorFuncionario = convite.IdentificadorFuncionario,
             ExpiraEm = convite.ExpiraEm
         });
@@ -177,6 +178,7 @@ public partial class AuthController : ControllerBase
             IdentificadorFuncionario = identificadorFuncionario,
             Perfil = convite.Perfil,
             ProfessorCurso = convite.ProfessorCurso,
+            Crp = convite.Crp,
             EmailConfirmed = true,
             Ativo = true,
             DoisFatoresObrigatorio = PerfilExigeDoisFatores(convite.Perfil)
@@ -763,6 +765,7 @@ public partial class AuthController : ControllerBase
             TermoSigiloPendente = await termoSigiloService.AceitePendenteAsync(usuario.Id, perfilSessao),
             Perfil = perfilSessao,
             ProfessorCurso = usuario.ProfessorCurso,
+            Crp = usuario.Crp,
             IdentificadorFuncionario = User.FindFirstValue("identificadorFuncionario") ?? usuario.IdentificadorFuncionario,
             DoisFatoresObrigatorio = usuario.DoisFatoresObrigatorio,
             DoisFatoresAtivado = usuario.TwoFactorEnabled,
@@ -1611,6 +1614,7 @@ public partial class AuthController : ControllerBase
     {
         return string.Equals(perfil, PerfisAcesso.Adm, StringComparison.OrdinalIgnoreCase)
             || string.Equals(perfil, PerfisAcesso.Juridico, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(perfil, PerfisAcesso.Psicologia, StringComparison.OrdinalIgnoreCase)
             || string.Equals(perfil, PerfisAcesso.AssistenteSocial, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -1626,6 +1630,7 @@ public partial class AuthController : ControllerBase
             Perfil = perfilSessao,
             IdentificadorFuncionario = identificadorSessao,
             ProfessorCurso = usuario.ProfessorCurso,
+            Crp = usuario.Crp,
             RequerDoisFatores = true,
             LoginTemporario = GerarLoginTemporario(usuario, perfilSessao, identificadorSessao),
             DoisFatoresObrigatorio = usuario.DoisFatoresObrigatorio,
@@ -1651,6 +1656,7 @@ public partial class AuthController : ControllerBase
             Email = usuario.Email ?? string.Empty,
             Perfil = perfilSessao,
             ProfessorCurso = usuario.ProfessorCurso,
+            Crp = usuario.Crp,
             IdentificadorFuncionario = identificadorSessao,
             RequerDoisFatores = false,
             DoisFatoresObrigatorio = usuario.DoisFatoresObrigatorio,

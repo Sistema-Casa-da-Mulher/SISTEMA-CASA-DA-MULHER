@@ -12,6 +12,9 @@ public class ApplicationUser : IdentityUser
 
     public string? ProfessorCurso { get; set; }
 
+    /// <summary>Registro no Conselho Regional de Psicologia (perfil psicologia).</summary>
+    public string? Crp { get; set; }
+
     public bool Ativo { get; set; } = true;
 
     public bool DeveTrocarSenha { get; set; }

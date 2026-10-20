@@ -77,6 +77,15 @@ public class CasoJuridicoDetalheResponse
     public bool PodeAlterarVisibilidade { get; set; }
     public bool PodePedirAcessoEmergencia { get; set; }
     public DateTime? AcessoEmergenciaExpiraEm { get; set; }
+
+    /// <summary>Só o fato de estar em acompanhamento na Psicologia, sem conteúdo.</summary>
+    public bool AcompanhamentoPsicologico { get; set; }
+
+    /// <summary>Alerta de risco alto/iminente registrado pela Psicologia, sem detalhes.</summary>
+    public bool AlertaRiscoPsicologico { get; set; }
+
+    public bool EncaminhadaPsicologia { get; set; }
+
     public List<AtendimentoJuridicoResponse> Atendimentos { get; set; } = [];
 }
 
