@@ -1,13 +1,14 @@
 document.addEventListener("DOMContentLoaded", setupProfessor);
 
 let professorUsuario = null;
-let cursoVinculado = null;
+let cursoVinculado = null;   // nome do curso selecionado
+let cursoIdAtual = null;     // id do curso selecionado
+let meusCursos = [];
 let alunasDoCurso = [];
 
-// Storage keys
-const STORAGE_CHAMADAS = "casamulher_professor_chamadas";
-const STORAGE_PLANOS = "casamulher_professor_planos";
-const STORAGE_ATIVIDADES = "casamulher_professor_atividades";
+// Plano de aula e chamada ficam no servidor e pertencem ao curso
+// (seguem quem assumir a turma). Este cache guarda o que veio da API.
+let aulasCache = { planos: [], chamadas: [], atividadesSugeridas: [] };
 
 let atividadesSelecionadasPlano = [];
 let atividadesSelecionadasChamada = [];
@@ -15,7 +16,7 @@ let aulaIdAtualChamada = null;
 
 async function setupProfessor() {
     professorUsuario = await CasaMulherAuth.protegerPagina();
-    
+
     if (!professorUsuario) return;
 
     if (professorUsuario.perfil !== "professor") {
@@ -25,26 +26,63 @@ async function setupProfessor() {
 
     inicializarSoftSessionCard(professorUsuario);
 
-    cursoVinculado = professorUsuario.professorCurso || professorUsuario.ProfessorCurso;
+    try {
+        const response = await CasaMulherAuth.apiFetch("/api/cursos/meus");
+        meusCursos = response.ok ? await response.json() : [];
+    } catch {
+        meusCursos = [];
+    }
 
-    if (!cursoVinculado) {
+    if (meusCursos.length === 0) {
         document.getElementById("professorEmptyState").classList.remove("hidden");
         return;
     }
 
-    // Populate context card
-    document.getElementById("professorCursoDisplay").textContent = cursoVinculado;
     document.getElementById("professorNomeDisplay").textContent = professorUsuario.nomeCompleto || "-";
     document.getElementById("professorIdDisplay").textContent = professorUsuario.identificadorFuncionario || "-";
-    
+
+    const select = document.getElementById("professorCursoSelect");
+    if (meusCursos.length > 1) {
+        select.innerHTML = meusCursos.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
+        select.classList.remove("hidden");
+        document.getElementById("professorCursoDisplay").classList.add("hidden");
+        select.addEventListener("change", () => selecionarCurso(Number(select.value)));
+    }
+
     document.getElementById("professorShell").classList.remove("hidden");
 
-    inicializarAtividades();
     setupChipsEvents();
     setupTabs();
-    await carregarAlunas();
     setupChamada();
     setupPlanoEnsino();
+    await selecionarCurso(meusCursos[0].id);
+}
+
+async function selecionarCurso(cursoId) {
+    const curso = meusCursos.find(c => c.id === cursoId);
+    if (!curso) return;
+
+    cursoIdAtual = curso.id;
+    cursoVinculado = curso.nome;
+    document.getElementById("professorCursoDisplay").textContent = curso.nome;
+
+    await Promise.all([carregarAlunas(), carregarAulas()]);
+    renderizarDatalistAtividades();
+    popularDatalistAulas();
+    renderizarPlanoEnsino();
+    carregarChamadaDoDia(document.getElementById("dataChamada").value);
+}
+
+async function carregarAulas() {
+    try {
+        const response = await CasaMulherAuth.apiFetch(`/api/cursos/${cursoIdAtual}/aulas`);
+        const dados = response.ok ? await response.json() : null;
+        aulasCache = dados
+            ? { planos: dados.planos || [], chamadas: dados.chamadas || [], atividadesSugeridas: dados.atividadesSugeridas || [] }
+            : { planos: [], chamadas: [], atividadesSugeridas: [] };
+    } catch {
+        aulasCache = { planos: [], chamadas: [], atividadesSugeridas: [] };
+    }
 }
 
 function normalizarTexto(texto) {
@@ -79,35 +117,15 @@ function obterNomeCurso(idOuNome) {
 /* ==========================================================================
    ATIVIDADES E CHIPS
    ========================================================================== */
-function inicializarAtividades() {
-    let dados = localStorage.getItem(STORAGE_ATIVIDADES);
-    let atividadesMap = dados ? JSON.parse(dados) : {};
-    
-    if (!atividadesMap["Informática e Inclusão Digital"]) {
-        atividadesMap["Informática e Inclusão Digital"] = [
-            "Teclado", "Mouse", "Área de trabalho", "Digitação",
-            "Navegador", "E-mail", "Pesquisa na internet", "Segurança digital"
-        ];
-        localStorage.setItem(STORAGE_ATIVIDADES, JSON.stringify(atividadesMap));
-    }
-    
-    renderizarDatalistAtividades();
-}
-
 function renderizarDatalistAtividades() {
-    const dados = localStorage.getItem(STORAGE_ATIVIDADES);
-    const atividadesMap = dados ? JSON.parse(dados) : {};
-    const atividades = atividadesMap[cursoVinculado] || [];
-    
     const datalist = document.getElementById("atividadesCursoList");
-    if(datalist) {
-        datalist.innerHTML = "";
-        atividades.forEach(a => {
-            const option = document.createElement("option");
-            option.value = a;
-            datalist.appendChild(option);
-        });
-    }
+    if (!datalist) return;
+    datalist.innerHTML = "";
+    aulasCache.atividadesSugeridas.forEach(a => {
+        const option = document.createElement("option");
+        option.value = a;
+        datalist.appendChild(option);
+    });
 }
 
 function atividadeJaExiste(lista, nome) {
@@ -116,16 +134,9 @@ function atividadeJaExiste(lista, nome) {
 }
 
 function adicionarAtividadeGlobal(nomeAtividade) {
-    let dados = localStorage.getItem(STORAGE_ATIVIDADES);
-    let atividadesMap = dados ? JSON.parse(dados) : {};
-    
-    if (!atividadesMap[cursoVinculado]) {
-        atividadesMap[cursoVinculado] = [];
-    }
-    
-    if (!atividadeJaExiste(atividadesMap[cursoVinculado], nomeAtividade)) {
-        atividadesMap[cursoVinculado].push(nomeAtividade.trim());
-        localStorage.setItem(STORAGE_ATIVIDADES, JSON.stringify(atividadesMap));
+    // A sugestão fica disponível já; no servidor ela passa a existir quando a aula ou a chamada é salva.
+    if (!atividadeJaExiste(aulasCache.atividadesSugeridas, nomeAtividade)) {
+        aulasCache.atividadesSugeridas.push(nomeAtividade.trim());
         renderizarDatalistAtividades();
     }
 }
@@ -186,7 +197,7 @@ function renderizarChips(lista, container, tipo) {
         const chip = document.createElement("div");
         chip.className = "professor-chip selected";
         chip.innerHTML = `
-            ${atv}
+            ${escapeHtml(atv)}
             <button type="button" class="professor-chip-remove" onclick="removerChip(${i}, '${tipo}')">&times;</button>
         `;
         container.appendChild(chip);
@@ -197,10 +208,10 @@ function renderizarChips(lista, container, tipo) {
    ALUNAS
    ========================================================================== */
 async function carregarAlunas() {
-    // As alunas vêm do servidor, já filtradas pelo curso vinculado (antes vinham do localStorage da Recepção).
+    // Alunas do curso selecionado, vindas do servidor (restritas nunca aparecem).
     let todasAssistidas = [];
     try {
-        const response = await CasaMulherAuth.apiFetch("/api/assistidas/curso");
+        const response = await CasaMulherAuth.apiFetch(`/api/cursos/${cursoIdAtual}/alunas`);
         todasAssistidas = response.ok ? await response.json() : [];
     } catch {
         todasAssistidas = [];
@@ -211,7 +222,8 @@ async function carregarAlunas() {
     renderizarAlunas(alunasDoCurso);
 
     const inputBusca = document.getElementById("buscaAlunas");
-    if (inputBusca) {
+    if (inputBusca && !inputBusca.dataset.bound) {
+        inputBusca.dataset.bound = "true";
         inputBusca.addEventListener("input", (e) => {
             const termo = normalizarTexto(e.target.value);
             const filtradas = alunasDoCurso.filter(a => normalizarTexto(a.nome).includes(termo));
@@ -263,7 +275,7 @@ function popularDatalistAulas() {
     list.innerHTML = "";
     
     const planos = carregarPlanosDoStorage();
-    const aulasDoProfessor = planos.filter(p => p.professorId === professorUsuario.identificadorFuncionario && p.curso === cursoVinculado);
+    const aulasDoProfessor = planos.filter(p => true);
     
     aulasDoProfessor.sort((a, b) => a.data.localeCompare(b.data));
     aulasDoProfessor.forEach(aula => {
@@ -280,16 +292,15 @@ function setupChamada() {
     const inputTema = document.getElementById("temaAulaInput");
     const btnSalvar = document.getElementById("btnSalvarChamada");
     
-    popularDatalistAulas();
-
-    const hoje = new Date().toISOString().split('T')[0];
+    const agora = new Date();
+    const hoje = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}-${String(agora.getDate()).padStart(2, "0")}`;
     inputData.value = hoje;
     
     inputData.addEventListener("change", () => carregarChamadaDoDia(inputData.value));
     
     inputTema.addEventListener("change", () => {
         const planos = carregarPlanosDoStorage();
-        const aulaEncontrada = planos.find(p => p.professorId === professorUsuario.identificadorFuncionario && p.curso === cursoVinculado && normalizarTexto(p.tema) === normalizarTexto(inputTema.value));
+        const aulaEncontrada = planos.find(p => normalizarTexto(p.tema) === normalizarTexto(inputTema.value));
         if (aulaEncontrada) {
             aulaIdAtualChamada = aulaEncontrada.id;
             atividadesSelecionadasChamada = [...(aulaEncontrada.atividades || [])];
@@ -300,30 +311,32 @@ function setupChamada() {
     });
 
     btnSalvar.addEventListener("click", salvarChamada);
-    
-    carregarChamadaDoDia(hoje);
 }
 
 function carregarChamadasDoStorage() {
-    const dados = localStorage.getItem(STORAGE_CHAMADAS);
-    return dados ? JSON.parse(dados) : [];
+    return aulasCache.chamadas;
 }
 
 function carregarChamadaDoDia(data) {
     const chamadas = carregarChamadasDoStorage();
-    const chamadaDoDia = chamadas.find(c => c.data === data && c.curso === cursoVinculado && c.professorId === professorUsuario.identificadorFuncionario);
+    const chamadaDoDia = chamadas.find(c => c.data === data);
     
     const inputTema = document.getElementById("temaAulaInput");
     
     if (chamadaDoDia) {
         inputTema.value = chamadaDoDia.tema || "";
-        aulaIdAtualChamada = chamadaDoDia.aulaId || null;
+        aulaIdAtualChamada = chamadaDoDia.planoAulaId || null;
         atividadesSelecionadasChamada = [...(chamadaDoDia.atividades || [])];
         renderizarChips(atividadesSelecionadasChamada, document.getElementById("chipsAtividadesChamada"), 'chamada');
-        renderizarListaChamada(chamadaDoDia.registros);
+        // Junta quem já tinha registro com as alunas atuais do curso (novas matrículas entram em branco).
+        const registros = (chamadaDoDia.registros || []).map(r => ({ alunaId: r.assistidaId, nome: r.nome || "", status: r.status, observacao: r.observacao || "" }));
+        alunasDoCurso.forEach(a => {
+            if (!registros.some(r => r.alunaId === a.id)) registros.push({ alunaId: a.id, nome: a.nome, status: null, observacao: "" });
+        });
+        renderizarListaChamada(registros);
     } else {
         const planos = carregarPlanosDoStorage();
-        const aulaPlanejada = planos.find(p => p.professorId === professorUsuario.identificadorFuncionario && p.curso === cursoVinculado && p.data === data);
+        const aulaPlanejada = planos.find(p => p.data === data);
         
         if (aulaPlanejada) {
             inputTema.value = aulaPlanejada.tema;
@@ -365,7 +378,7 @@ function renderizarListaChamada(registros) {
         card.innerHTML = `
             <div style="flex: 1; min-width: 200px;">
                 <div style="font-weight: 700; color: #8A3D66; font-size: 1.05rem;">${escapeHtml(reg.nome)}</div>
-                <input type="text" class="soft-input obs-input" placeholder="Observação (opcional)" value="${reg.observacao || ''}" style="margin-top: 8px; width: 100%; max-width: 300px; padding: 4px 8px; font-size: 0.85rem;">
+                <input type="text" class="soft-input obs-input" placeholder="Observação (opcional)" value="${escapeHtml(reg.observacao || '')}" style="margin-top: 8px; width: 100%; max-width: 300px; padding: 4px 8px; font-size: 0.85rem;">
             </div>
             <div class="professor-status-group">
                 <button type="button" class="professor-status-button ${reg.status === 'presente' ? 'active' : ''}" data-status="presente">Presente</button>
@@ -405,99 +418,47 @@ function atualizarAvisoChamada() {
     }
 }
 
-function salvarChamada() {
+async function salvarChamada() {
     const data = document.getElementById("dataChamada").value;
     const tema = document.getElementById("temaAulaInput").value.trim();
     const feedback = document.getElementById("chamadaFeedback");
-    
+
     if (!data) {
         feedback.textContent = "Selecione a data da aula.";
         feedback.style.color = "#F44336";
         return;
     }
-    
-    let aulaId = aulaIdAtualChamada;
-    
-    if (tema) {
-        const planos = carregarPlanosDoStorage();
-        if (!aulaId) {
-            const aulaExist = planos.find(p => p.professorId === professorUsuario.identificadorFuncionario && p.curso === cursoVinculado && normalizarTexto(p.tema) === normalizarTexto(tema));
-            if (aulaExist) {
-                aulaId = aulaExist.id;
-            } else {
-                aulaId = Date.now().toString();
-                planos.push({
-                    id: aulaId,
-                    professorId: professorUsuario.identificadorFuncionario,
-                    curso: cursoVinculado,
-                    data: data,
-                    tema: tema,
-                    atividades: [...atividadesSelecionadasChamada],
-                    criadoEm: new Date().toISOString(),
-                    origem: "criado_pela_chamada"
-                });
-                localStorage.setItem(STORAGE_PLANOS, JSON.stringify(planos));
-                popularDatalistAulas();
-                renderizarPlanoEnsino();
-            }
-        }
-        
-        if (aulaId) {
-            const index = planos.findIndex(p => p.id === aulaId);
-            if (index >= 0) {
-                let planAtvs = planos[index].atividades || [];
-                atividadesSelecionadasChamada.forEach(atv => {
-                    if (!atividadeJaExiste(planAtvs, atv)) {
-                        planAtvs.push(atv);
-                    }
-                });
-                planos[index].atividades = planAtvs;
-                localStorage.setItem(STORAGE_PLANOS, JSON.stringify(planos));
-                renderizarPlanoEnsino();
-            }
-        }
-    }
-    
-    const list = document.getElementById("chamadaList");
-    const cards = list.querySelectorAll(".professor-chamada-card");
-    
+
     const registros = [];
-    cards.forEach(card => {
-        const alunaId = card.dataset.alunaId;
-        const nome = card.querySelector("div[style*='font-weight: 700']").textContent;
-        const obs = card.querySelector(".obs-input").value;
+    document.querySelectorAll("#chamadaList .professor-chamada-card").forEach(card => {
         const btnAtivo = card.querySelector(".professor-status-button.active");
-        const status = btnAtivo ? btnAtivo.dataset.status : null;
-        
-        registros.push({ alunaId, nome, status, observacao: obs });
+        registros.push({
+            assistidaId: Number(card.dataset.alunaId),
+            status: btnAtivo ? btnAtivo.dataset.status : null,
+            observacao: card.querySelector(".obs-input").value
+        });
     });
-    
-    const chamadas = carregarChamadasDoStorage();
-    const indexExistente = chamadas.findIndex(c => c.data === data && c.curso === cursoVinculado && c.professorId === professorUsuario.identificadorFuncionario);
-    
-    const chamadaParaSalvar = {
-        id: `${professorUsuario.identificadorFuncionario}|${cursoVinculado}|${data}`,
-        professorId: professorUsuario.identificadorFuncionario,
-        professorNome: professorUsuario.nomeCompleto,
-        curso: cursoVinculado,
-        data: data,
-        tema: tema,
-        aulaId: aulaId,
-        atividades: [...atividadesSelecionadasChamada],
-        registros: registros,
-        atualizadoEm: new Date().toISOString()
-    };
-    
-    if (indexExistente >= 0) {
-        chamadas[indexExistente] = chamadaParaSalvar;
-    } else {
-        chamadas.push(chamadaParaSalvar);
+
+    const response = await CasaMulherAuth.apiFetch(`/api/cursos/${cursoIdAtual}/chamadas/${data}`, {
+        method: "PUT",
+        body: { tema, planoAulaId: aulaIdAtualChamada, atividades: [...atividadesSelecionadasChamada], registros }
+    });
+
+    if (!response.ok) {
+        let mensagem = "Não foi possível salvar a chamada.";
+        try { mensagem = (await response.json()).mensagem || mensagem; } catch { /* sem corpo */ }
+        feedback.textContent = mensagem;
+        feedback.style.color = "#F44336";
+        return;
     }
-    
-    localStorage.setItem(STORAGE_CHAMADAS, JSON.stringify(chamadas));
-    
-    aulaIdAtualChamada = aulaId; // Update state after creation
-    
+
+    const salva = await response.json();
+    aulaIdAtualChamada = salva.planoAulaId || null;
+    await carregarAulas();
+    renderizarDatalistAtividades();
+    popularDatalistAulas();
+    renderizarPlanoEnsino();
+
     feedback.textContent = "Chamada salva com sucesso!";
     feedback.style.color = "#4CAF50";
     setTimeout(() => { feedback.textContent = ""; }, 3000);
@@ -530,64 +491,53 @@ function setupPlanoEnsino() {
         e.preventDefault();
         salvarAulaPlano();
     });
-    
-    renderizarPlanoEnsino();
 }
 
 function carregarPlanosDoStorage() {
-    const dados = localStorage.getItem(STORAGE_PLANOS);
-    return dados ? JSON.parse(dados) : [];
+    return aulasCache.planos;
 }
 
-function salvarAulaPlano() {
-    const data = document.getElementById("aulaData").value;
-    const tema = document.getElementById("aulaTema").value;
-    const obs = document.getElementById("aulaObservacoes").value;
-    
-    const planos = carregarPlanosDoStorage();
-    
-    if (editandoPlanoId) {
-        const index = planos.findIndex(p => p.id === editandoPlanoId);
-        if (index >= 0) {
-            planos[index].data = data;
-            planos[index].tema = tema;
-            planos[index].atividades = [...atividadesSelecionadasPlano];
-            planos[index].observacoes = obs;
-            planos[index].atualizadoEm = new Date().toISOString();
-        }
-    } else {
-        planos.push({
-            id: Date.now().toString(),
-            professorId: professorUsuario.identificadorFuncionario,
-            curso: cursoVinculado,
-            data: data,
-            tema: tema,
-            atividades: [...atividadesSelecionadasPlano],
-            observacoes: obs,
-            origem: "plano",
-            criadoEm: new Date().toISOString()
-        });
+async function salvarAulaPlano() {
+    const corpo = {
+        data: document.getElementById("aulaData").value,
+        tema: document.getElementById("aulaTema").value,
+        atividades: [...atividadesSelecionadasPlano],
+        observacoes: document.getElementById("aulaObservacoes").value
+    };
+
+    const url = editandoPlanoId ? `/api/cursos/${cursoIdAtual}/planos/${editandoPlanoId}` : `/api/cursos/${cursoIdAtual}/planos`;
+    const response = await CasaMulherAuth.apiFetch(url, { method: editandoPlanoId ? "PUT" : "POST", body: corpo });
+    if (!response.ok) {
+        let mensagem = "Não foi possível salvar a aula.";
+        try { mensagem = (await response.json()).mensagem || mensagem; } catch { /* sem corpo */ }
+        alert(mensagem);
+        return;
     }
-    
-    localStorage.setItem(STORAGE_PLANOS, JSON.stringify(planos));
+
+    await carregarAulas();
+    renderizarDatalistAtividades();
     popularDatalistAulas();
     document.getElementById("formPlanoEnsino").classList.add("hidden");
     renderizarPlanoEnsino();
 }
 
-window.excluirAulaPlano = function(id) {
+window.excluirAulaPlano = async function(id) {
     if (!confirm("Tem certeza que deseja excluir esta aula do plano de ensino?")) return;
-    
-    let planos = carregarPlanosDoStorage();
-    planos = planos.filter(p => p.id !== id);
-    localStorage.setItem(STORAGE_PLANOS, JSON.stringify(planos));
+
+    const response = await CasaMulherAuth.apiFetch(`/api/cursos/${cursoIdAtual}/planos/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+        alert("Não foi possível excluir a aula.");
+        return;
+    }
+
+    await carregarAulas();
     popularDatalistAulas();
     renderizarPlanoEnsino();
 }
 
 window.editarAulaPlano = function(id) {
     const planos = carregarPlanosDoStorage();
-    const aula = planos.find(p => p.id === id);
+    const aula = planos.find(p => String(p.id) === String(id));
     if (!aula) return;
     
     editandoPlanoId = aula.id;
@@ -607,7 +557,7 @@ function renderizarPlanoEnsino() {
     const empty = document.getElementById("planoEmpty");
     
     const planos = carregarPlanosDoStorage();
-    const aulasDoProfessor = planos.filter(p => p.professorId === professorUsuario.identificadorFuncionario && p.curso === cursoVinculado);
+    const aulasDoProfessor = planos.filter(p => true);
     
     aulasDoProfessor.sort((a, b) => a.data.localeCompare(b.data));
     
@@ -631,12 +581,12 @@ function renderizarPlanoEnsino() {
         let chipsHtml = "";
         if (aula.atividades && aula.atividades.length > 0) {
             chipsHtml = `<div class="professor-chip-list" style="margin-top: 12px;">` + 
-                aula.atividades.map(a => `<div class="professor-chip">${a}</div>`).join("") +
+                aula.atividades.map(a => `<div class="professor-chip">${escapeHtml(a)}</div>`).join("") +
             `</div>`;
         }
         
         let obsTexto = aula.observacoes || aula.conteudo || "";
-        let obsHtml = obsTexto ? `<div style="font-size: 0.9rem; color: #666; margin-top: 12px;"><strong>Observações:</strong> ${obsTexto}</div>` : '';
+        let obsHtml = obsTexto ? `<div style="font-size: 0.9rem; color: #666; margin-top: 12px;"><strong>Observações:</strong> ${escapeHtml(obsTexto)}</div>` : '';
         
         let origemHtml = aula.origem === "criado_pela_chamada" ? `<div class="professor-origin-badge">Criada pela chamada</div>` : '';
 
@@ -644,7 +594,7 @@ function renderizarPlanoEnsino() {
             <div class="professor-aula-header">
                 <div>
                     <div class="professor-aula-data">${formatData}</div>
-                    <div class="professor-aula-tema">${aula.tema}</div>
+                    <div class="professor-aula-tema">${escapeHtml(aula.tema)}</div>
                     ${origemHtml}
                 </div>
                 <div style="display: flex; gap: 8px;">

@@ -20,6 +20,10 @@ public class AssistidaRequest
     public string? Direcionamento { get; set; }
     public bool EncaminharJuridico { get; set; }
     public bool EncaminharPsicologia { get; set; }
+    public bool EncaminharAssistenciaSocial { get; set; }
+
+    /// <summary>Cursos do direcionamento. Nulo = não mexe nos cursos (clientes antigos).</summary>
+    public List<int>? CursoIds { get; set; }
     public string? Observacoes { get; set; }
 }
 
@@ -96,6 +100,8 @@ public class AssistidaResponse
     public bool EncaminhadaJuridico { get; set; }
     public DateTime? EncaminhadaJuridicoEm { get; set; }
     public bool EncaminhadaPsicologia { get; set; }
+    public bool EncaminhadaAssistenciaSocial { get; set; }
+    public List<CursoResumoResponse> Cursos { get; set; } = [];
     public string? SituacaoJuridico { get; set; }
     public string? Observacoes { get; set; }
     public string Origem { get; set; } = string.Empty;
@@ -107,14 +113,4 @@ public class AssistidaResponse
     public DateTime CriadoEm { get; set; }
     public DateTime AtualizadoEm { get; set; }
     public string? AvisoSnapshot { get; set; }
-}
-
-/// <summary>Visão mínima para a tela do Professor: só o necessário para chamada.</summary>
-public class AlunaCursoResponse
-{
-    public int Id { get; set; }
-    public string Nome { get; set; } = string.Empty;
-    public string? Telefone { get; set; }
-    public string? Curso { get; set; }
-    public DateTime DataAcolhimento { get; set; }
 }

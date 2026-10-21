@@ -147,7 +147,6 @@
             bairro: valor(form, "bairro") || null,
             cidade: valor(form, "cidade") || null,
             uf: valor(form, "uf") || null,
-            direcionamento: valor(form, "curso") || null,
             encaminharJuridico: Boolean(valor(form, "encaminharJuridico")),
             encaminharPsicologia: Boolean(valor(form, "encaminharPsicologia")),
             observacoes: valor(form, "observacoes") || null
@@ -189,7 +188,6 @@
         set("bairro", a.bairro);
         set("cidade", a.cidade);
         set("uf", a.uf);
-        set("curso", a.direcionamento);
         set("encaminharJuridico", a.encaminhadaJuridico);
         set("encaminharPsicologia", a.encaminhadaPsicologia);
         set("observacoes", a.observacoes);

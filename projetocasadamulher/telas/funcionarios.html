@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Funcionários - Casa da Mulher</title>
-    <link rel="stylesheet" href="style.css?v=11">
+    <link rel="stylesheet" href="style.css?v=16">
     <script src="config.js" defer></script>
     <script src="auth.js?v=2" defer></script>
-    <script src="app.js?v=11" defer></script>
+    <script src="app.js?v=16" defer></script>
 </head>
 <body class="soft-page">
     <main id="funcionariosPage" class="soft-admin-main">
@@ -61,5 +61,29 @@
             </div>
         </section>
     </main>
+
+    <div id="modalTransferencia" class="soft-modal hidden" role="dialog" aria-modal="true" aria-labelledby="transferenciaTitulo">
+        <div class="soft-modal-content" style="max-width: 560px;">
+            <div class="soft-modal-header">
+                <h2 id="transferenciaTitulo">Passar responsabilidades</h2>
+                <button type="button" class="btn-close" id="btnFecharTransferencia" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="soft-modal-body">
+                <p style="margin-top: 0;">Vai para a pessoa escolhida:</p>
+                <div id="transferenciaResumo"></div>
+                <div class="soft-form-group" style="margin-top: 16px;">
+                    <label for="transferenciaDestino">Quem assume (mesmo perfil)</label>
+                    <select id="transferenciaDestino" class="soft-input"></select>
+                </div>
+                <label class="soft-check" style="margin-top: 12px;"><input type="checkbox" id="transferenciaDesativar" checked> Desativar a conta de quem saiu</label>
+                <p class="section-intro" style="margin-top: 10px;">O que j&aacute; foi registrado continua assinado por quem fez. A transfer&ecirc;ncia fica no hist&oacute;rico de a&ccedil;&otilde;es.</p>
+                <p id="transferenciaErro" class="message error"></p>
+            </div>
+            <div class="soft-modal-footer">
+                <button type="button" class="soft-action-secondary" id="btnCancelarTransferencia">Cancelar</button>
+                <button type="button" class="soft-btn soft-btn-primary" id="btnConfirmarTransferencia">Passar responsabilidades</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

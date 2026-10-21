@@ -269,7 +269,6 @@ async function salvarCadastro(e) {
 
     if (id && fichaAtual) {
         // Correção: mantém o que a Recepção preencheu e o Jurídico não vê neste formulário.
-        dados.direcionamento = fichaAtual.assistida.direcionamento;
         dados.observacoes = fichaAtual.assistida.observacoes;
         dados.encaminharJuridico = true;
     }

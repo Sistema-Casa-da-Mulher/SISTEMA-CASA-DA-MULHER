@@ -51,6 +51,12 @@ public class Assistida
     /// <summary>Preenchido quando a assistida é encaminhada à Psicologia.</summary>
     public DateTime? EncaminhadaPsicologiaEm { get; set; }
 
+    /// <summary>Preenchido quando a assistida é encaminhada à Assistência Social.</summary>
+    public DateTime? EncaminhadaAssistenciaSocialEm { get; set; }
+
+    /// <summary>Cursos para os quais a assistida foi direcionada.</summary>
+    public ICollection<AssistidaCurso> Cursos { get; set; } = new List<AssistidaCurso>();
+
     public string? Observacoes { get; set; }
 
     /// <summary>recepcao ou juridico: por qual porta o cadastro entrou.</summary>

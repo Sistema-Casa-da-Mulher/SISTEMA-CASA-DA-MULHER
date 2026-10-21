@@ -214,6 +214,9 @@ namespace CasaMulher.Api.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("EncaminhadaAssistenciaSocialEm")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("EncaminhadaJuridicoEm")
                         .HasColumnType("TEXT");
 
@@ -279,6 +282,31 @@ namespace CasaMulher.Api.Migrations
                     b.HasIndex("Nome");
 
                     b.ToTable("Assistidas", (string)null);
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.AssistidaCurso", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AssistidaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CursoId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CursoId");
+
+                    b.HasIndex("AssistidaId", "CursoId")
+                        .IsUnique();
+
+                    b.ToTable("AssistidasCursos", (string)null);
                 });
 
             modelBuilder.Entity("CasaMulher.Api.Models.AtendimentoJuridico", b =>
@@ -607,6 +635,111 @@ namespace CasaMulher.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("CasosJuridicosResponsaveis", (string)null);
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.Chamada", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AtividadesJson")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CursoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("Data")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("PlanoAulaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RegistradaPorIdentificador")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RegistradaPorNome")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RegistradaPorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tema")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CursoId", "Data")
+                        .IsUnique();
+
+                    b.ToTable("Chamadas", (string)null);
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.ChamadaRegistro", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AssistidaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ChamadaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChamadaId", "AssistidaId")
+                        .IsUnique();
+
+                    b.ToTable("ChamadasRegistros", (string)null);
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.Curso", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nome");
+
+                    b.ToTable("Cursos", (string)null);
                 });
 
             modelBuilder.Entity("CasaMulher.Api.Models.EmailEvento", b =>
@@ -1200,6 +1333,87 @@ namespace CasaMulher.Api.Migrations
                     b.ToTable("PasskeyReconfirmacoes", (string)null);
                 });
 
+            modelBuilder.Entity("CasaMulher.Api.Models.PlanoAula", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AtividadesJson")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CriadoPorIdentificador")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CriadoPorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CursoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("Data")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Observacoes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Origem")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tema")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CursoId", "Data");
+
+                    b.ToTable("PlanosAula", (string)null);
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.ProfessorCurso", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AtribuidoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CursoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CursoId");
+
+                    b.HasIndex("UserId", "CursoId")
+                        .IsUnique();
+
+                    b.ToTable("ProfessoresCursos", (string)null);
+                });
+
             modelBuilder.Entity("CasaMulher.Api.Models.ProntuarioPsicologico", b =>
                 {
                     b.Property<int>("Id")
@@ -1764,6 +1978,25 @@ namespace CasaMulher.Api.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("CasaMulher.Api.Models.AssistidaCurso", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.Assistida", "Assistida")
+                        .WithMany("Cursos")
+                        .HasForeignKey("AssistidaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CasaMulher.Api.Models.Curso", "Curso")
+                        .WithMany()
+                        .HasForeignKey("CursoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Assistida");
+
+                    b.Navigation("Curso");
+                });
+
             modelBuilder.Entity("CasaMulher.Api.Models.AtendimentoJuridico", b =>
                 {
                     b.HasOne("CasaMulher.Api.Models.CasoJuridico", "Caso")
@@ -1819,6 +2052,28 @@ namespace CasaMulher.Api.Migrations
                     b.Navigation("Caso");
                 });
 
+            modelBuilder.Entity("CasaMulher.Api.Models.Chamada", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.Curso", "Curso")
+                        .WithMany()
+                        .HasForeignKey("CursoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Curso");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.ChamadaRegistro", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.Chamada", "Chamada")
+                        .WithMany("Registros")
+                        .HasForeignKey("ChamadaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Chamada");
+                });
+
             modelBuilder.Entity("CasaMulher.Api.Models.GitHubUsuarioVinculo", b =>
                 {
                     b.HasOne("CasaMulher.Api.Models.ApplicationUser", "ApplicationUser")
@@ -1839,6 +2094,28 @@ namespace CasaMulher.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.PlanoAula", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.Curso", "Curso")
+                        .WithMany()
+                        .HasForeignKey("CursoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Curso");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.ProfessorCurso", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.Curso", "Curso")
+                        .WithMany()
+                        .HasForeignKey("CursoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Curso");
                 });
 
             modelBuilder.Entity("CasaMulher.Api.Models.ProntuarioPsicologico", b =>
@@ -1974,6 +2251,11 @@ namespace CasaMulher.Api.Migrations
                     b.Navigation("PasskeyCredentials");
                 });
 
+            modelBuilder.Entity("CasaMulher.Api.Models.Assistida", b =>
+                {
+                    b.Navigation("Cursos");
+                });
+
             modelBuilder.Entity("CasaMulher.Api.Models.AtendimentoJuridico", b =>
                 {
                     b.Navigation("Adendos");
@@ -1984,6 +2266,11 @@ namespace CasaMulher.Api.Migrations
                     b.Navigation("Atendimentos");
 
                     b.Navigation("Responsaveis");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.Chamada", b =>
+                {
+                    b.Navigation("Registros");
                 });
 
             modelBuilder.Entity("CasaMulher.Api.Models.ProntuarioPsicologico", b =>

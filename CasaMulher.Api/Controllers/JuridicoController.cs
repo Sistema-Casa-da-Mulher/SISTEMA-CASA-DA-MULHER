@@ -103,6 +103,7 @@ public class JuridicoController : ControllerBase
         if (usuario is null) return Unauthorized();
 
         var assistida = await _dbContext.Assistidas.AsNoTracking()
+            .Include(a => a.Cursos).ThenInclude(c => c.Curso)
             .SingleOrDefaultAsync(a => a.Id == assistidaId && a.Ativa, cancellationToken);
         if (assistida is null) return NotFound(new { mensagem = "Assistida não encontrada." });
 
@@ -337,6 +338,7 @@ public class JuridicoController : ControllerBase
         if (usuario is null) return Unauthorized();
 
         var assistida = await _dbContext.Assistidas.AsNoTracking()
+            .Include(a => a.Cursos).ThenInclude(c => c.Curso)
             .SingleOrDefaultAsync(a => a.Id == assistidaId && a.Ativa, cancellationToken);
         if (assistida is null) return NotFound(new { mensagem = "Assistida não encontrada." });
 

@@ -290,6 +290,7 @@ builder.Services.AddHttpClient<GitHubPrivateFileService>();
 builder.Services.AddScoped<EquipeDbSyncService>();
 builder.Services.AddScoped<HmlDbSnapshotService>();
 builder.Services.AddScoped<AssistidasService>();
+builder.Services.AddScoped<CursosService>();
 builder.Services.AddScoped<SecuritySnapshotPersistenceService>();
 builder.Services.AddScoped<TermoSigiloService>();
 builder.Services.AddScoped<HomologacaoSeedService>();
@@ -502,6 +503,17 @@ if (app.Environment.IsStaging())
     {
         app.Logger.LogWarning(ex, "Seed fictício de homologação não pôde ser aplicado.");
     }
+}
+
+// Cursos passam a ficar no banco: cria os padrões e converte direcionamentos/cursos em texto.
+try
+{
+    await using var cursosScope = app.Services.CreateAsyncScope();
+    await cursosScope.ServiceProvider.GetRequiredService<CursosService>().MigrarDadosLegadosAsync();
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Migração dos cursos para o banco não pôde ser concluída agora.");
 }
 
 var runDemoSeed = app.Configuration.GetValue("Seed:RunDemoData", app.Environment.IsDevelopment());

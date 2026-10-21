@@ -250,7 +250,6 @@ async function salvarCadastro(e) {
 
     if (id && fichaAtual) {
         // Correção: mantém o que a Recepção preencheu e a Psicologia não vê neste formulário.
-        dados.direcionamento = fichaAtual.assistida.direcionamento;
         dados.observacoes = fichaAtual.assistida.observacoes;
         dados.encaminharJuridico = fichaAtual.assistida.encaminhadaJuridico;
         dados.encaminharPsicologia = true;

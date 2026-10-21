@@ -13,7 +13,7 @@ namespace CasaMulher.Api.Controllers;
 [ApiController]
 [Authorize(Policy = PoliticasAcesso.SomenteAdm)]
 [Route("api/funcionarios")]
-public class FuncionariosController : ControllerBase
+public partial class FuncionariosController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
     private readonly UserManager<ApplicationUser> _userManager;

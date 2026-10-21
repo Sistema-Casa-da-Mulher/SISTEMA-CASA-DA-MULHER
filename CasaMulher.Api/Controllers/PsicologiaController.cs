@@ -116,6 +116,7 @@ public class PsicologiaController : ControllerBase
         }
 
         var assistida = await _dbContext.Assistidas.AsNoTracking()
+            .Include(a => a.Cursos).ThenInclude(c => c.Curso)
             .SingleOrDefaultAsync(a => a.Id == assistidaId && a.Ativa, cancellationToken);
         if (assistida is null) return NotFound(new { mensagem = "Assistida não encontrada." });
 

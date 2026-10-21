@@ -85,3 +85,11 @@ O helper `CasaMulherAuth.podeAcessar(area)` usa as mesmas areas conceituais:
 - **Juridico** ve apenas "em acompanhamento na Psicologia" e o alerta de risco, sem conteudo. **Recepcao** nao ve nada da Psicologia. **Coordenacao** ve so os indicadores (numeros sem nome).
 - Declaracao de comparecimento impressa sem nenhum conteudo da sessao.
 - Sem campo de diagnostico/CID; grupos de apoio ficam para uma fase futura.
+
+## Cursos e transferencia de responsabilidades (ADM)
+
+- Cursos ficam no banco (`/api/cursos`). So o ADM cria, renomeia, desativa/reativa e apaga. Renomear mantem alunas, professoras e aulas ligadas. Curso com historico (alunas, professoras, plano ou chamada) nao e apagado, so desativado: some das listas e nao recebe novas alunas, mas o historico continua.
+- O ADM define os cursos de cada professora a qualquer momento (uma professora pode ter varios cursos). O convite de professora continua escolhendo um curso inicial.
+- Plano de aula e chamada ficam no servidor e pertencem ao curso, nao a professora: quem assumir a turma ve tudo.
+- Direcionamento da Recepcao: botao que abre um card com cursos (busca e rolagem, varios por pessoa) e encaminhamentos (Juridica, Psicologa, Assistente social). E obrigatorio escolher pelo menos um curso ou um encaminhamento.
+- Passar responsabilidades (tela Funcionarios): o ADM escolhe quem saiu e quem assume (mesmo perfil). Passam os cursos (professora), os casos em que era responsavel (Juridico) e os prontuarios em que era responsavel (Psicologia). Os registros ja feitos continuam assinados por quem fez. Por padrao a conta de quem saiu e desativada no mesmo passo. Tudo fica na auditoria (`RESPONSABILIDADES_TRANSFERIDAS`).

@@ -213,6 +213,12 @@ public partial class AuthController : ControllerBase
         await _dbContext.SaveChangesAsync();
         await transaction.CommitAsync();
 
+        if (!string.IsNullOrWhiteSpace(usuario.ProfessorCurso))
+        {
+            // Vincula a professora ao curso escolhido no convite (cursos agora ficam no banco).
+            await HttpContext.RequestServices.GetRequiredService<CursosService>().MigrarDadosLegadosAsync();
+        }
+
         // A conta e o consumo do convite devem ser persistidos antes do e-mail
         // de confirmação. Caso contrário, um restart restaura um snapshot antigo
         // depois de o funcionário já ter recebido a confirmação de cadastro.

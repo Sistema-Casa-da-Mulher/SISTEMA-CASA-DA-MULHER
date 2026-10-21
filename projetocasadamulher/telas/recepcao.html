@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recep&ccedil;&atilde;o - Casa da Mulher</title>
-    <link rel="stylesheet" href="style.css?v=14">
+    <link rel="stylesheet" href="style.css?v=16">
     <style>
         .recepcao-panel {
             display: none;
@@ -37,8 +37,8 @@
     </style>
     <script src="config.js" defer></script>
     <script src="auth.js?v=2" defer></script>
-    <script src="app.js?v=14" defer></script>
-    <script src="assistida-form.js?v=2" defer></script>
+    <script src="app.js?v=16" defer></script>
+    <script src="assistida-form.js?v=3" defer></script>
     <script defer>
         (function () {
             "use strict";
@@ -50,6 +50,9 @@
             let usuarioLogado = null;
             let form = null;
             let salvando = false;
+            let cursosDisponiveis = [];
+            // Direcionamento: cursos (vários) + encaminhamentos. Psicologia não volta da API para a Recepção (sigilo).
+            let direcionamento = { cursoIds: [], juridica: false, psicologa: false, assistenteSocial: false };
 
             async function init() {
                 const usuario = await protegerTelaRecepcao();
@@ -71,7 +74,8 @@
                 form = document.getElementById("patientForm");
                 F().init(form, showMessage);
                 bindEvents();
-                await loadData();
+                await Promise.all([loadData(), carregarCursos()]);
+                atualizarBotaoDirecionamento();
                 updateDashboard();
                 displayPatients();
                 verificarDadosLegados();
@@ -105,6 +109,13 @@
                 document.getElementById("btnBuscarPaciente")?.addEventListener("click", searchPatients);
                 document.getElementById("btnMostrarTodas")?.addEventListener("click", resetSearch);
                 document.getElementById("btnImportarLegado")?.addEventListener("click", importarDadosLegados);
+                document.getElementById("btnDirecionamento").addEventListener("click", abrirDirecionamento);
+                document.getElementById("btnFecharDirecionamento").addEventListener("click", fecharDirecionamento);
+                document.getElementById("btnConfirmarDirecionamento").addEventListener("click", confirmarDirecionamento);
+                document.getElementById("btnLimparDirecionamento").addEventListener("click", function () {
+                    document.querySelectorAll("#modalDirecionamento input[type=checkbox]").forEach(function (c) { c.checked = false; });
+                });
+                document.getElementById("buscaCursoDirecionamento").addEventListener("input", filtrarCursosDirecionamento);
 
                 document.getElementById("searchPatient")?.addEventListener("input", function (event) {
                     displayPatients(event.target.value);
@@ -144,6 +155,84 @@
 
                 const lista = await response.json();
                 patients = Array.isArray(lista) ? lista : [];
+            }
+
+            async function carregarCursos() {
+                try {
+                    const response = await CasaMulherAuth.apiFetch("/api/cursos");
+                    cursosDisponiveis = response.ok ? await response.json() : [];
+                } catch {
+                    cursosDisponiveis = [];
+                }
+            }
+
+            function nomesCursos(ids) {
+                return ids.map(function (id) {
+                    const curso = cursosDisponiveis.find(function (c) { return c.id === id; });
+                    return curso ? curso.nome : null;
+                }).filter(Boolean);
+            }
+
+            function resumoDirecionamento(d) {
+                const partes = nomesCursos(d.cursoIds);
+                if (d.juridica) partes.push("Jurídica");
+                if (d.psicologa) partes.push("Psicóloga");
+                if (d.assistenteSocial) partes.push("Assistente social");
+                return partes.join(" · ");
+            }
+
+            function atualizarBotaoDirecionamento() {
+                const botao = document.getElementById("btnDirecionamento");
+                const resumo = resumoDirecionamento(direcionamento);
+                botao.textContent = resumo || "Escolher cursos e encaminhamentos";
+                botao.classList.toggle("direcionamento-botao--vazio", !resumo);
+            }
+
+            function abrirDirecionamento() {
+                const lista = document.getElementById("listaCursosDirecionamento");
+                lista.innerHTML = cursosDisponiveis.length
+                    ? cursosDisponiveis.map(function (curso) {
+                        const marcado = direcionamento.cursoIds.includes(curso.id) ? "checked" : "";
+                        return `<label class="soft-check" data-nome="${F().escapeHtml(curso.nome.toLowerCase())}"><input type="checkbox" value="${curso.id}" ${marcado}> ${F().escapeHtml(curso.nome)}</label>`;
+                    }).join("")
+                    : "<p class=\"section-intro\">Nenhum curso cadastrado. A coordenação cadastra os cursos.</p>";
+                document.getElementById("encJuridica").checked = direcionamento.juridica;
+                document.getElementById("encPsicologa").checked = direcionamento.psicologa;
+                document.getElementById("encAssistenteSocial").checked = direcionamento.assistenteSocial;
+                document.getElementById("buscaCursoDirecionamento").value = "";
+                document.getElementById("direcionamentoErro").textContent = "";
+                document.getElementById("modalDirecionamento").classList.remove("hidden");
+                document.getElementById("buscaCursoDirecionamento").focus();
+            }
+
+            function filtrarCursosDirecionamento(event) {
+                const termo = event.target.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+                document.querySelectorAll("#listaCursosDirecionamento label").forEach(function (label) {
+                    const nome = (label.dataset.nome || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    label.classList.toggle("hidden", termo !== "" && !nome.includes(termo));
+                });
+            }
+
+            function confirmarDirecionamento() {
+                const novo = {
+                    cursoIds: Array.from(document.querySelectorAll("#listaCursosDirecionamento input:checked")).map(function (c) { return Number(c.value); }),
+                    juridica: document.getElementById("encJuridica").checked,
+                    psicologa: document.getElementById("encPsicologa").checked,
+                    assistenteSocial: document.getElementById("encAssistenteSocial").checked
+                };
+
+                if (!novo.cursoIds.length && !novo.juridica && !novo.psicologa && !novo.assistenteSocial) {
+                    document.getElementById("direcionamentoErro").textContent = "Escolha pelo menos um curso ou um encaminhamento.";
+                    return;
+                }
+
+                direcionamento = novo;
+                atualizarBotaoDirecionamento();
+                fecharDirecionamento();
+            }
+
+            function fecharDirecionamento() {
+                document.getElementById("modalDirecionamento").classList.add("hidden");
             }
 
             function lerLegado() {
@@ -217,7 +306,12 @@
 
                 const id = document.getElementById("patientId").value;
                 const dados = F().ler(form);
-                const erro = F().validar(dados);
+                dados.cursoIds = direcionamento.cursoIds;
+                dados.encaminharJuridico = direcionamento.juridica;
+                dados.encaminharPsicologia = direcionamento.psicologa;
+                dados.encaminharAssistenciaSocial = direcionamento.assistenteSocial;
+                const erro = F().validar(dados)
+                    || (!id && !resumoDirecionamento(direcionamento) ? "Escolha pelo menos um curso ou um encaminhamento no Direcionamento." : null);
 
                 if (erro) {
                     showMessage(erro, "error");
@@ -304,7 +398,7 @@
                             <div class="entity-info">Contato: ${esc(F().formatarContato(patient))}</div>
                             <div class="entity-info">Nascimento: ${esc(F().formatarData(patient.dataNascimento))}</div>
                             <div class="entity-info">Endereço: ${esc(F().formatarEndereco(patient))}</div>
-                            <div class="entity-info">Direcionamento: ${esc(F().formatarDirecionamento(patient.curso))}</div>
+                            <div class="entity-info">Direcionamento: ${esc(resumoDirecionamento({ cursoIds: (patient.cursos || []).map(function (c) { return c.id; }), juridica: patient.encaminhadaJuridico, psicologa: false, assistenteSocial: patient.encaminhadaAssistenciaSocial }) || (patient.cursos || []).map(function (c) { return c.nome; }).join(", ") || "-")}</div>
                             ${patient.emailAssistida ? `<div class="entity-info">E-mail: ${esc(patient.emailAssistida)}</div>` : ""}
                             <div class="entity-info">Atendida por: ${esc(patient.funcionarioAtendimentoNomeSnapshot || "-")}</div>
                             <div class="entity-info" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
@@ -331,6 +425,13 @@
 
                 document.getElementById("patientId").value = patient.id;
                 F().preencher(form, patient);
+                direcionamento = {
+                    cursoIds: (patient.cursos || []).map(function (c) { return c.id; }),
+                    juridica: Boolean(patient.encaminhadaJuridico),
+                    psicologa: Boolean(patient.encaminhadaPsicologia),
+                    assistenteSocial: Boolean(patient.encaminhadaAssistenciaSocial)
+                };
+                atualizarBotaoDirecionamento();
                 document.getElementById("formTitle").textContent = "Editar acolhimento";
                 document.getElementById("submitLabel").textContent = "Salvar alterações";
                 showMessage("Altere os dados necessários e salve.", "info");
@@ -370,16 +471,22 @@
 
             function updateDashboard() {
                 const comDirecionamento = patients.filter(function (patient) {
-                    return patient.curso && patient.curso.trim() !== "";
+                    return (patient.cursos || []).length > 0 || patient.encaminhadaJuridico || patient.encaminhadaAssistenciaSocial;
+                });
+                const cursosUsados = new Set();
+                patients.forEach(function (patient) {
+                    (patient.cursos || []).forEach(function (c) { cursosUsados.add(c.id); });
                 });
 
                 document.getElementById("totalPatients").textContent = String(patients.length);
                 document.getElementById("totalCourses").textContent = String(comDirecionamento.length);
-                document.getElementById("activeEnrollments").textContent = String(new Set(comDirecionamento.map(function (p) { return p.curso; })).size);
+                document.getElementById("activeEnrollments").textContent = String(cursosUsados.size);
             }
 
             function resetForm() {
                 F().limpar(form);
+                direcionamento = { cursoIds: [], juridica: false, psicologa: false, assistenteSocial: false };
+                atualizarBotaoDirecionamento();
                 document.getElementById("patientId").value = "";
                 document.getElementById("formTitle").textContent = "Novo acolhimento";
                 document.getElementById("submitLabel").textContent = "Salvar acolhimento";
@@ -471,7 +578,7 @@
                         </div>
                         <div class="soft-stat-card">
                             <span id="activeEnrollments" class="stat-number">0</span>
-                            <span class="stat-label">Direcionamentos diferentes</span>
+                            <span class="stat-label">Cursos com alunas</span>
                         </div>
                     </div>
                 </div>
@@ -578,21 +685,9 @@
                                 <div class="responsavel-meta" id="atendidaPorInfoDisplay">-</div>
                             </div>
                             <div class="soft-form-group">
-                                <label for="curso">Direcionamento</label>
-                                <select id="curso" class="soft-input">
-                                    <option value="">A definir</option>
-                                    <optgroup label="Cursos">
-                                        <option value="Culinaria">Culin&aacute;ria</option>
-                                        <option value="Danca">Dan&ccedil;a</option>
-                                    </optgroup>
-                                    <optgroup label="Assist&ecirc;ncia">
-                                        <option value="Juridica">Jur&iacute;dica</option>
-                                        <option value="Psicologa">Psic&oacute;loga</option>
-                                        <option value="AssistenteSocial">Assistente social</option>
-                                    </optgroup>
-                                </select>
-                                <label class="soft-check"><input type="checkbox" id="encaminharJuridico"> Encaminhar tamb&eacute;m ao Jur&iacute;dico</label>
-                                <label class="soft-check"><input type="checkbox" id="encaminharPsicologia"> Encaminhar tamb&eacute;m &agrave; Psicologia</label>
+                                <label for="btnDirecionamento">Direcionamento *</label>
+                                <button type="button" id="btnDirecionamento" class="soft-input direcionamento-botao" aria-haspopup="dialog">Escolher cursos e encaminhamentos</button>
+                                <small class="direcionamento-ajuda">Escolha pelo menos um curso ou um encaminhamento.</small>
                             </div>
                         </div>
                         <div class="soft-form-row">
@@ -610,5 +705,34 @@
             </section>
         </section>
     </main>
+
+    <div id="modalDirecionamento" class="soft-modal hidden" role="dialog" aria-modal="true" aria-labelledby="direcionamentoTitulo">
+        <div class="soft-modal-content direcionamento-modal">
+            <div class="soft-modal-header">
+                <h2 id="direcionamentoTitulo">Direcionamento</h2>
+                <button type="button" class="btn-close" id="btnFecharDirecionamento" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="direcionamento-colunas">
+                <section class="direcionamento-coluna">
+                    <h3>Cursos</h3>
+                    <input type="search" id="buscaCursoDirecionamento" class="soft-input" placeholder="Buscar curso pelo nome">
+                    <div id="listaCursosDirecionamento" class="direcionamento-lista" role="group" aria-label="Cursos"></div>
+                </section>
+                <section class="direcionamento-coluna">
+                    <h3>Encaminhamento</h3>
+                    <div class="direcionamento-lista direcionamento-lista--curta" role="group" aria-label="Encaminhamentos">
+                        <label class="soft-check"><input type="checkbox" id="encJuridica"> Jur&iacute;dica</label>
+                        <label class="soft-check"><input type="checkbox" id="encPsicologa"> Psic&oacute;loga</label>
+                        <label class="soft-check"><input type="checkbox" id="encAssistenteSocial"> Assistente social</label>
+                    </div>
+                </section>
+            </div>
+            <p id="direcionamentoErro" class="message error"></p>
+            <div class="soft-modal-footer">
+                <button type="button" class="soft-btn soft-btn-warning" id="btnLimparDirecionamento">Limpar</button>
+                <button type="button" class="soft-btn soft-btn-primary" id="btnConfirmarDirecionamento">Confirmar</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

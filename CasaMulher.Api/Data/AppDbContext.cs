@@ -61,6 +61,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<ProntuarioPsicologicoAcessoEmergencia> ProntuariosPsicologicosAcessosEmergencia => Set<ProntuarioPsicologicoAcessoEmergencia>();
 
+    public DbSet<Curso> Cursos => Set<Curso>();
+
+    public DbSet<ProfessorCurso> ProfessoresCursos => Set<ProfessorCurso>();
+
+    public DbSet<AssistidaCurso> AssistidasCursos => Set<AssistidaCurso>();
+
+    public DbSet<PlanoAula> PlanosAula => Set<PlanoAula>();
+
+    public DbSet<Chamada> Chamadas => Set<Chamada>();
+
+    public DbSet<ChamadaRegistro> ChamadasRegistros => Set<ChamadaRegistro>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -521,6 +533,64 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(a => a.CasoJuridicoId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Curso>(entity =>
+        {
+            entity.ToTable("Cursos");
+            entity.HasIndex(c => c.Nome);
+            entity.Property(c => c.Nome).IsRequired().HasMaxLength(120);
+        });
+
+        builder.Entity<ProfessorCurso>(entity =>
+        {
+            entity.ToTable("ProfessoresCursos");
+            entity.HasIndex(p => new { p.UserId, p.CursoId }).IsUnique();
+            entity.Property(p => p.UserId).IsRequired().HasMaxLength(450);
+            entity.HasOne(p => p.Curso).WithMany().HasForeignKey(p => p.CursoId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AssistidaCurso>(entity =>
+        {
+            entity.ToTable("AssistidasCursos");
+            entity.HasIndex(a => new { a.AssistidaId, a.CursoId }).IsUnique();
+            entity.HasIndex(a => a.CursoId);
+            entity.HasOne(a => a.Assistida).WithMany(a => a.Cursos).HasForeignKey(a => a.AssistidaId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(a => a.Curso).WithMany().HasForeignKey(a => a.CursoId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<PlanoAula>(entity =>
+        {
+            entity.ToTable("PlanosAula");
+            entity.HasIndex(p => new { p.CursoId, p.Data });
+            entity.Property(p => p.Tema).IsRequired().HasMaxLength(200);
+            entity.Property(p => p.AtividadesJson).IsRequired().HasMaxLength(4000);
+            entity.Property(p => p.Observacoes).HasMaxLength(2000);
+            entity.Property(p => p.Origem).IsRequired().HasMaxLength(30);
+            entity.Property(p => p.CriadoPorUserId).IsRequired().HasMaxLength(450);
+            entity.Property(p => p.CriadoPorIdentificador).IsRequired().HasMaxLength(80);
+            entity.HasOne(p => p.Curso).WithMany().HasForeignKey(p => p.CursoId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Chamada>(entity =>
+        {
+            entity.ToTable("Chamadas");
+            entity.HasIndex(c => new { c.CursoId, c.Data }).IsUnique();
+            entity.Property(c => c.Tema).HasMaxLength(200);
+            entity.Property(c => c.AtividadesJson).IsRequired().HasMaxLength(4000);
+            entity.Property(c => c.RegistradaPorUserId).IsRequired().HasMaxLength(450);
+            entity.Property(c => c.RegistradaPorIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(c => c.RegistradaPorNome).IsRequired().HasMaxLength(160);
+            entity.HasOne(c => c.Curso).WithMany().HasForeignKey(c => c.CursoId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ChamadaRegistro>(entity =>
+        {
+            entity.ToTable("ChamadasRegistros");
+            entity.HasIndex(r => new { r.ChamadaId, r.AssistidaId }).IsUnique();
+            entity.Property(r => r.Status).HasMaxLength(20);
+            entity.Property(r => r.Observacao).HasMaxLength(300);
+            entity.HasOne(r => r.Chamada).WithMany(c => c.Registros).HasForeignKey(r => r.ChamadaId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<ProntuarioPsicologico>(entity =>

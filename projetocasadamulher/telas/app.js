@@ -753,6 +753,7 @@ async function setupPainel() {
 
     if (CasaMulherAuth.podeAcessar("funcionarios")) {
         document.getElementById("linkFuncionarios")?.classList.remove("hidden");
+        document.getElementById("linkCursos")?.classList.remove("hidden");
     }
 
     if (CasaMulherAuth.podeAcessar("recepcao")) {
@@ -1003,12 +1004,15 @@ async function setupConvites() {
     const cursoProfessorSelect = document.getElementById("cursoProfessorSelect");
 
     if (cursoProfessorSelect) {
-        CURSOS_RECEPCAO.forEach(curso => {
-            const option = document.createElement("option");
-            option.value = curso.nome;
-            option.textContent = curso.nome;
-            cursoProfessorSelect.appendChild(option);
-        });
+        // Os cursos ficam no banco (Gestão de cursos); o convite vincula a professora ao escolhido.
+        CasaMulherAuth.apiFetch("/api/cursos").then(r => r.ok ? r.json() : []).then(lista => {
+            lista.forEach(curso => {
+                const option = document.createElement("option");
+                option.value = curso.nome;
+                option.textContent = curso.nome;
+                cursoProfessorSelect.appendChild(option);
+            });
+        }).catch(() => {});
 
         const fecharModal = () => modalCursoProfessor.classList.add("hidden");
 
@@ -1575,6 +1579,7 @@ async function setupFuncionarios() {
                     ${ativar}
                     <button type="button" class="soft-action-secondary" data-action="resetar-senha" data-id="${funcionario.id}">Redefinir senha</button>
                     <button type="button" class="soft-action-secondary" data-action="resetar-2fa" data-id="${funcionario.id}">Redefinir 2FA</button>
+                    ${funcionario.perfil !== "adm" ? `<button type="button" class="soft-action-secondary" data-action="transferir" data-id="${funcionario.id}">Passar responsabilidades</button>` : ""}
                 </div>
             </article>
         `;
@@ -1675,6 +1680,73 @@ async function setupFuncionarios() {
         }
     }
 
+    // ---- Passar responsabilidades (quem saiu → quem assume) ----
+    let transferenciaOrigemId = null;
+    const modalTransferencia = document.getElementById("modalTransferencia");
+
+    async function abrirTransferencia(id) {
+        transferenciaOrigemId = id;
+        const response = await CasaMulherAuth.apiFetch(`/api/funcionarios/${id}/responsabilidades`, { mensagemElement: mensagem });
+        if (!response.ok) {
+            setMessage(mensagem, await readApiMessage(response), "error");
+            return;
+        }
+
+        const r = await response.json();
+        const itens = [];
+        if (r.cursos.length) itens.push(`<li>Cursos: ${escapeHtml(r.cursos.join(", "))} (com alunas, plano de aula e chamada)</li>`);
+        if (r.casosJuridicos) itens.push(`<li>${r.casosJuridicos} caso(s) do Jurídico em que é responsável</li>`);
+        if (r.prontuariosPsicologicos) itens.push(`<li>${r.prontuariosPsicologicos} prontuário(s) da Psicologia em que é responsável</li>`);
+
+        document.getElementById("transferenciaTitulo").textContent = `Passar responsabilidades de ${r.nome}`;
+        document.getElementById("transferenciaResumo").innerHTML = itens.length
+            ? `<ul style="margin: 0 0 0 18px; padding: 0;">${itens.join("")}</ul>`
+            : "<p>Nada para passar: esta pessoa não tem cursos, casos ou prontuários sob responsabilidade.</p>";
+        document.getElementById("transferenciaDestino").innerHTML = r.destinos.length
+            ? '<option value="">Escolha quem assume...</option>' + r.destinos.map(d => `<option value="${escapeHtml(d.userId)}">${escapeHtml(d.nome)} (${escapeHtml(d.identificador)})</option>`).join("")
+            : '<option value="">Nenhuma outra pessoa ativa com o mesmo perfil</option>';
+        document.getElementById("transferenciaDesativar").checked = true;
+        document.getElementById("transferenciaErro").textContent = "";
+        modalTransferencia.classList.remove("hidden");
+    }
+
+    function fecharTransferencia() {
+        modalTransferencia.classList.add("hidden");
+        transferenciaOrigemId = null;
+    }
+
+    document.getElementById("btnFecharTransferencia").addEventListener("click", fecharTransferencia);
+    document.getElementById("btnCancelarTransferencia").addEventListener("click", fecharTransferencia);
+    document.getElementById("btnConfirmarTransferencia").addEventListener("click", async () => {
+        const destinoUserId = document.getElementById("transferenciaDestino").value;
+        const erro = document.getElementById("transferenciaErro");
+        if (!destinoUserId) {
+            erro.textContent = "Escolha quem vai assumir.";
+            return;
+        }
+
+        const desativarConta = document.getElementById("transferenciaDesativar").checked;
+        const response = await CasaMulherAuth.apiFetch(`/api/funcionarios/${transferenciaOrigemId}/transferir-responsabilidades`, {
+            method: "POST",
+            body: { destinoUserId, desativarConta }
+        });
+
+        if (!response.ok) {
+            erro.textContent = await readApiMessage(response);
+            return;
+        }
+
+        const r = await response.json();
+        fecharTransferencia();
+        setMessage(
+            mensagem,
+            `Responsabilidades passadas: ${r.cursos} curso(s), ${r.casosJuridicos} caso(s) jurídico(s) e ${r.prontuariosPsicologicos} prontuário(s).`
+                + (r.contaDesativada ? " A conta de quem saiu foi desativada." : "")
+                + (r.aviso ? ` ${r.aviso}` : ""),
+            r.aviso ? "info" : "success");
+        carregarFuncionarios();
+    });
+
     document.getElementById("btnAtualizarFuncionarios").addEventListener("click", () => {
         funcionariosPaginaAtual = 1;
         carregarFuncionarios();
@@ -1727,6 +1799,12 @@ async function setupFuncionarios() {
         }
 
         const action = button.dataset.action;
+
+        if (action === "transferir") {
+            abrirTransferencia(button.dataset.id);
+            return;
+        }
+
         let method = "PATCH";
         let url = `/api/funcionarios/${button.dataset.id}/${action}`;
 

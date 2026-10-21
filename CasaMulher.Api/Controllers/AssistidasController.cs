@@ -28,18 +28,23 @@ public class AssistidasController : ControllerBase
     private readonly AssistidasService _assistidas;
     private readonly IAuditoriaService _auditoria;
     private readonly SecuritySnapshotPersistenceService _snapshot;
+    private readonly CursosService _cursos;
 
     public AssistidasController(
         AppDbContext dbContext,
         AssistidasService assistidas,
         IAuditoriaService auditoria,
-        SecuritySnapshotPersistenceService snapshot)
+        SecuritySnapshotPersistenceService snapshot,
+        CursosService cursos)
     {
         _dbContext = dbContext;
         _assistidas = assistidas;
         _auditoria = auditoria;
         _snapshot = snapshot;
+        _cursos = cursos;
     }
+
+    public const string MensagemSemDirecionamento = "Escolha pelo menos um curso ou um encaminhamento no Direcionamento.";
 
     [HttpGet]
     [Authorize(Policy = PoliticasAcesso.CadastroAssistidas)]
@@ -81,7 +86,7 @@ public class AssistidasController : ControllerBase
         if (erro is not null) return BadRequest(new { mensagem = erro });
 
         var cpf = AssistidasService.SomenteDigitos(request.Cpf);
-        var existente = await _dbContext.Assistidas.SingleOrDefaultAsync(a => a.Cpf == cpf, cancellationToken);
+        var existente = await _dbContext.Assistidas.Include(a => a.Cursos).ThenInclude(c => c.Curso).SingleOrDefaultAsync(a => a.Cpf == cpf, cancellationToken);
         var reativada = false;
 
         if (existente is not null && existente.Ativa)
@@ -131,6 +136,10 @@ public class AssistidasController : ControllerBase
             assistida.EncaminhadaPsicologiaEm ??= DateTime.UtcNow;
         }
 
+        var erroCursos = await AplicarCursosAsync(assistida, request.CursoIds, cancellationToken);
+        if (erroCursos is not null) return BadRequest(new { mensagem = erroCursos });
+        if (!TemDirecionamento(assistida)) return BadRequest(new { mensagem = MensagemSemDirecionamento });
+
         if (existente is null)
         {
             _dbContext.Assistidas.Add(assistida);
@@ -169,6 +178,10 @@ public class AssistidasController : ControllerBase
         }
 
         AplicarDados(assistida, request, cpf);
+        var erroCursos = await AplicarCursosAsync(assistida, request.CursoIds, cancellationToken);
+        if (erroCursos is not null) return BadRequest(new { mensagem = erroCursos });
+        if (!TemDirecionamento(assistida)) return BadRequest(new { mensagem = MensagemSemDirecionamento });
+
         assistida.AtualizadoEm = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -296,40 +309,6 @@ public class AssistidasController : ControllerBase
         return Ok(new { mensagem = $"Encaminhada para {rotulo}.", avisoSnapshot = snapshot.AvisoSnapshot });
     }
 
-    /// <summary>Alunas do curso vinculado à professora. Restritas nunca aparecem.</summary>
-    [HttpGet("curso")]
-    [Authorize(Policy = PoliticasAcesso.AcessoCursos)]
-    public async Task<ActionResult<List<AlunaCursoResponse>>> AlunasDoCurso(CancellationToken cancellationToken)
-    {
-        var usuario = await _assistidas.ObterUsuarioAsync(User, cancellationToken);
-        if (usuario is null) return Unauthorized();
-
-        var curso = await _dbContext.Users.AsNoTracking()
-            .Where(u => u.Id == usuario.UserId)
-            .Select(u => u.ProfessorCurso)
-            .SingleOrDefaultAsync(cancellationToken);
-
-        if (string.IsNullOrWhiteSpace(curso)) return Ok(new List<AlunaCursoResponse>());
-
-        var candidatas = await _dbContext.Assistidas.AsNoTracking()
-            .Where(a => a.Ativa && !a.AcessoRestrito && a.Direcionamento != null)
-            .OrderBy(a => a.Nome)
-            .ToListAsync(cancellationToken);
-
-        return Ok(candidatas
-            .Where(a => AssistidasService.CursoCorresponde(a.Direcionamento, curso))
-            .Select(a => new AlunaCursoResponse
-            {
-                Id = a.Id,
-                Nome = a.Nome,
-                // Não expõe telefone de quem pediu para não receber ligação.
-                Telefone = a.SemTelefoneSeguro || a.ContatoSeguro == AssistidaContatoSeguro.NaoLigar ? null : a.Telefone,
-                Curso = a.Direcionamento,
-                DataAcolhimento = a.CriadoEm
-            })
-            .ToList());
-    }
-
     /// <summary>Migração única dos cadastros que ficaram salvos no navegador da Recepção.</summary>
     [HttpPost("importar-navegador")]
     [Authorize(Policy = PoliticasAcesso.AcessoRecepcao)]
@@ -395,6 +374,7 @@ public class AssistidasController : ControllerBase
         if (importadas > 0)
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
+            await _cursos.MigrarDadosLegadosAsync(cancellationToken);
             await _auditoria.RegistrarAsync(
                 "ASSISTIDAS_IMPORTADAS_NAVEGADOR",
                 "Assistida",
@@ -408,7 +388,7 @@ public class AssistidasController : ControllerBase
 
     private IQueryable<Assistida> ConsultaVisivel(UsuarioAtuante usuario)
     {
-        var query = _dbContext.Assistidas.Where(a => a.Ativa);
+        var query = _dbContext.Assistidas.Include(a => a.Cursos).ThenInclude(c => c.Curso).Where(a => a.Ativa);
         return AssistidasService.PodeVerRestritas(usuario.Perfil) ? query : query.Where(a => !a.AcessoRestrito);
     }
 
@@ -494,6 +474,40 @@ public class AssistidasController : ControllerBase
         return null;
     }
 
+    /// <summary>Sincroniza os cursos do direcionamento. Curso desativado só fica se já estava ligado.</summary>
+    private async Task<string?> AplicarCursosAsync(Assistida assistida, List<int>? cursoIds, CancellationToken cancellationToken)
+    {
+        if (cursoIds is null) return null;
+
+        var ids = cursoIds.Distinct().ToList();
+        var cursos = await _dbContext.Cursos.Where(c => ids.Contains(c.Id)).ToListAsync(cancellationToken);
+        if (cursos.Count != ids.Count) return "Curso inválido no direcionamento.";
+
+        var jaLigados = assistida.Cursos.Select(c => c.CursoId).ToHashSet();
+        if (cursos.Any(c => !c.Ativo && !jaLigados.Contains(c.Id))) return "Este curso foi desativado e não recebe novas alunas.";
+
+        foreach (var vinculo in assistida.Cursos.Where(c => !ids.Contains(c.CursoId)).ToList())
+        {
+            assistida.Cursos.Remove(vinculo);
+        }
+
+        foreach (var curso in cursos.Where(c => !jaLigados.Contains(c.Id)))
+        {
+            assistida.Cursos.Add(new AssistidaCurso { CursoId = curso.Id, Curso = curso, CriadoEm = DateTime.UtcNow });
+        }
+
+        return null;
+    }
+
+    private static bool TemDirecionamento(Assistida a)
+    {
+        return a.Cursos.Count > 0
+            || a.EncaminhadaJuridicoEm is not null
+            || a.EncaminhadaPsicologiaEm is not null
+            || a.EncaminhadaAssistenciaSocialEm is not null
+            || !string.IsNullOrWhiteSpace(a.Direcionamento);
+    }
+
     private static void AplicarDados(Assistida assistida, AssistidaRequest request, string cpf)
     {
         assistida.Nome = request.Nome.Trim();
@@ -529,7 +543,8 @@ public class AssistidasController : ControllerBase
             assistida.Uf = Limitar(request.Uf?.Trim().ToUpperInvariant(), 2);
         }
 
-        assistida.Direcionamento = Limitar(request.Direcionamento?.Trim(), 60);
+        // O direcionamento em texto é do formato antigo; o novo usa CursoIds + encaminhamentos.
+        assistida.Direcionamento = request.CursoIds is null ? Limitar(request.Direcionamento?.Trim(), 60) : null;
         assistida.Observacoes = Limitar(request.Observacoes?.Trim(), 1000);
 
         var encaminhar = request.EncaminharJuridico
@@ -544,6 +559,12 @@ public class AssistidasController : ControllerBase
             || string.Equals(assistida.Direcionamento, AssistidasService.DirecionamentoPsicologia, StringComparison.OrdinalIgnoreCase))
         {
             assistida.EncaminhadaPsicologiaEm ??= DateTime.UtcNow;
+        }
+
+        if (request.EncaminharAssistenciaSocial
+            || string.Equals(assistida.Direcionamento, "AssistenteSocial", StringComparison.OrdinalIgnoreCase))
+        {
+            assistida.EncaminhadaAssistenciaSocialEm ??= DateTime.UtcNow;
         }
     }
 
@@ -598,8 +619,14 @@ public class AssistidasController : ControllerBase
             Bairro = a.Bairro,
             Cidade = a.Cidade,
             Uf = a.Uf,
-            Direcionamento = a.Direcionamento,
-            Curso = a.Direcionamento,
+            Direcionamento = NomesCursos(a) ?? a.Direcionamento,
+            Curso = NomesCursos(a) ?? a.Direcionamento,
+            Cursos = a.Cursos
+                .Where(c => c.Curso is not null)
+                .OrderBy(c => c.Curso!.Nome)
+                .Select(c => new CursoResumoResponse { Id = c.CursoId, Nome = c.Curso!.Nome, Ativo = c.Curso.Ativo })
+                .ToList(),
+            EncaminhadaAssistenciaSocial = a.EncaminhadaAssistenciaSocialEm is not null,
             EncaminhadaJuridico = a.EncaminhadaJuridicoEm is not null,
             EncaminhadaJuridicoEm = a.EncaminhadaJuridicoEm,
             EncaminhadaPsicologia = a.EncaminhadaPsicologiaEm is not null,
@@ -614,6 +641,12 @@ public class AssistidasController : ControllerBase
             CriadoEm = a.CriadoEm,
             AtualizadoEm = a.AtualizadoEm
         };
+    }
+
+    private static string? NomesCursos(Assistida a)
+    {
+        var nomes = a.Cursos.Where(c => c.Curso is not null).Select(c => c.Curso!.Nome).OrderBy(n => n).ToList();
+        return nomes.Count == 0 ? null : string.Join(", ", nomes);
     }
 
     private static string? Limitar(string? valor, int maximo)
