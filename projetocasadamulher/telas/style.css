@@ -3577,3 +3577,33 @@ textarea.soft-input {
         grid-template-columns: 1fr;
     }
 }
+
+/* Atividades da aula (chips) na área do professor */
+.professor-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.professor-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    margin: 6px 6px 0 0;
+    border-radius: 999px;
+    background: #FBE4EE;
+    color: #8B586F;
+    border: 1px solid #F3C9DA;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.professor-chip-remove {
+    border: none;
+    background: none;
+    color: #A23B3B;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+}
