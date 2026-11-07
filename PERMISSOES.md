@@ -31,7 +31,7 @@ Importante: esconder botoes no front-end melhora a usabilidade, mas nao e a segu
 | Marcar acesso restrito | Sim | Nao | Nao | Nao (quando houver modulo) | Sim |
 | Ver assistida com acesso restrito | Sim | Nao | Nao | Nao | Sim |
 | Ver frequencia/curso | Sim | Nao | Sim | Nao | Nao |
-| Gerar relatorios gerais | Sim | Nao | Nao | Sim | Sim |
+| Relatorios (aba de cada perfil) | Sim (Casa, so numeros e metadados) | Sim (da area) | Sim (das suas turmas) | Psicologia: sim (da area) | Sim (da area) |
 
 ## Policies do back-end
 
@@ -43,7 +43,7 @@ Importante: esconder botoes no front-end melhora a usabilidade, mas nao e a segu
 | `AcessoProntuarioSocial` | `adm`, `as_social` | Prontuario social e acompanhamento. |
 | `AcessoJuridico` | `adm`, `juridico` | Atendimento juridico. |
 | `AcessoPsicologia` | `adm`, `psicologia` | Psicologia. A coordenacao so acessa os indicadores. |
-| `AcessoRelatorios` | `adm`, `as_social`, `juridico` | Relatorios gerais permitidos a coordenacao e areas tecnicas. |
+| `AcessoRelatorios` | `adm`, `recepcao`, `professor`, `juridico`, `psicologia` | Aba Relatorios (`/api/relatorios`); cada perfil recebe so o que ja ve no seu modulo. |
 | `CadastroAssistidas` | `adm`, `recepcao`, `as_social`, `juridico`, `psicologia` | Cadastro unico das assistidas (`/api/assistidas`). |
 
 ## Areas do front-end
@@ -61,7 +61,7 @@ O helper `CasaMulherAuth.podeAcessar(area)` usa as mesmas areas conceituais:
 | `social` | `adm`, `as_social` |
 | `juridico` | `adm`, `juridico` |
 | `psicologia` | `adm`, `psicologia` |
-| `relatorios` | `adm`, `as_social`, `juridico` |
+| `relatorios` | `adm`, `recepcao`, `professor`, `juridico`, `psicologia` |
 
 ## Cadastro unico e Juridico
 
@@ -93,3 +93,13 @@ O helper `CasaMulherAuth.podeAcessar(area)` usa as mesmas areas conceituais:
 - Plano de aula e chamada ficam no servidor e pertencem ao curso, nao a professora: quem assumir a turma ve tudo.
 - Direcionamento da Recepcao: botao que abre um card com cursos (busca e rolagem, varios por pessoa) e encaminhamentos (Juridica, Psicologa, Assistente social). E obrigatorio escolher pelo menos um curso ou um encaminhamento.
 - Passar responsabilidades (tela Funcionarios): o ADM escolhe quem saiu e quem assume (mesmo perfil). Passam os cursos (professora), os casos em que era responsavel (Juridico) e os prontuarios em que era responsavel (Psicologia). Os registros ja feitos continuam assinados por quem fez. Por padrao a conta de quem saiu e desativada no mesmo passo. Tudo fica na auditoria (`RESPONSABILIDADES_TRANSFERIDAS`).
+
+## Relatorios
+
+- Tela `relatorios.html` (aba "Relatorios" em cada perfil): Relatorio Estatistico/Geral e relatorio individual da assistida, periodo mensal, semestral, anual ou geral (no individual, geral = desde a entrada).
+- Os numeros sao calculados no servidor (`RelatoriosService`) com as mesmas regras dos modulos: casos restritos fora da Recepcao e da Professora; casos "somente responsaveis" so com metadados para quem nao e responsavel; prontuario so da psicologa responsavel; Coordenacao so com numeros e metadados (nada da Psicologia por assistida, sem risco); Recepcao sem nada da Psicologia.
+- Jurídico e Psicologia veem dos cursos so nome, situacao e datas. O motivo da saida do curso fica so com a professora; a Coordenacao ve a contagem por motivo.
+- A Recepcao ve a situacao operacional do encaminhamento ao Juridico (aguardando, agendado, primeiro atendimento realizado, cancelado), sem demanda, relato nem motivo do cancelamento.
+- Relatos e evolucoes so entram no PDF se a responsavel marcar registro a registro (`POST /api/relatorios/assistidas/{id}/sigilosos`). A impressao fica no historico de acoes (`RELATORIO_IMPRESSO`) com os protocolos, sem copiar textos. Gerar o relatorio individual tambem e registrado (`RELATORIO_INDIVIDUAL_GERADO`).
+- "Documento para outra instituicao" (Juridico com acesso ao caso; Psicologia so a responsavel) registra destinatario e finalidade (`RELATORIO_DOCUMENTO_EXTERNO`); o resumo escrito nao vai ao servidor.
+- Dados novos: vagas do curso (ADM, tela Cursos), situacao/termino/motivo da aluna (professora) e agendamento/cancelamento do encaminhamento ao Juridico (Juridico). Periodos anteriores aparecem como "sem registro".

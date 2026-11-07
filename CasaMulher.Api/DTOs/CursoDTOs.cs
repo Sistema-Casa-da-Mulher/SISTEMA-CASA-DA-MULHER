@@ -8,6 +8,8 @@ public class CursoResponse
     public int TotalAlunas { get; set; }
     public int TotalProfessoras { get; set; }
     public bool PodeApagar { get; set; }
+    public int? Vagas { get; set; }
+    public int AlunasAtivas { get; set; }
 }
 
 public class CursoResumoResponse
@@ -42,6 +44,14 @@ public class AlunaCursoResponse
     public string Nome { get; set; } = string.Empty;
     public string? Telefone { get; set; }
     public DateTime DataAcolhimento { get; set; }
+
+    /// <summary>aguardando, cursando, concluiu ou interrompido.</summary>
+    public string Situacao { get; set; } = "cursando";
+    public DateTime InicioEm { get; set; }
+    public string? TerminoEm { get; set; }
+
+    /// <summary>Só a professora recebe o motivo da saída.</summary>
+    public string? MotivoSaida { get; set; }
 }
 
 public class PlanoAulaResponse

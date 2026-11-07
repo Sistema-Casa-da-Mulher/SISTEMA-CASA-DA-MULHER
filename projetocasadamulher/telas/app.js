@@ -791,6 +791,10 @@ async function setupPainel() {
         document.getElementById("linkAuditoria")?.classList.remove("hidden");
     }
 
+    if (CasaMulherAuth.podeAcessar("relatorios")) {
+        document.getElementById("linkRelatorios")?.classList.remove("hidden");
+    }
+
     if (CasaMulherAuth.podeAcessar("emails")) {
         document.getElementById("linkEmails")?.classList.remove("hidden");
     }

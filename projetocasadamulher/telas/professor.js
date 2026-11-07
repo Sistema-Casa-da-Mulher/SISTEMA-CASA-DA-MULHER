@@ -91,7 +91,7 @@ function normalizarTexto(texto) {
 }
 
 function setupTabs() {
-    const tabs = document.querySelectorAll(".professor-tab");
+    const tabs = document.querySelectorAll(".professor-tab[data-tab]");
     tabs.forEach(tab => {
         tab.addEventListener("click", () => {
             // Remove active from all tabs
@@ -257,13 +257,83 @@ function renderizarAlunas(lista) {
         const telefone = aluna.telefone ? `<div class="professor-aluna-detail">${iconeTelefone} <span style="font-weight: 500;">${escapeHtml(aluna.telefone)}</span></div>` : "";
         const dataCadastro = aluna.dataAcolhimento ? `<div class="professor-aluna-detail">${iconeData} <span>Cadastrada em: ${new Date(aluna.dataAcolhimento).toLocaleDateString('pt-BR')}</span></div>` : "";
         
+        const situacao = aluna.situacao || "cursando";
+        const termino = aluna.terminoEm ? ` em ${aluna.terminoEm.split("-").reverse().join("/")}` : "";
         card.innerHTML = `
             <div class="professor-aluna-name">${escapeHtml(aluna.nome)}</div>
             ${telefone}
             ${dataCadastro}
+            <div class="professor-aluna-detail"><span class="soft-badge ${CLASSES_SITUACAO_ALUNA[situacao] || ""}">${escapeHtml(ROTULOS_SITUACAO_ALUNA[situacao] || situacao)}${escapeHtml(termino)}</span></div>
+            ${aluna.motivoSaida ? `<div class="professor-aluna-detail"><span>Motivo: ${escapeHtml(aluna.motivoSaida)}</span></div>` : ""}
+            <details class="professor-aluna-situacao" style="margin-top: 8px;">
+                <summary style="cursor: pointer; color: #A26D85; font-weight: 600; font-size: 0.85rem;">Registrar término ou saída</summary>
+                <div style="display: grid; gap: 6px; margin-top: 8px;">
+                    <select class="soft-input" data-campo="situacao">
+                        ${Object.keys(ROTULOS_SITUACAO_ALUNA).map(s => `<option value="${s}" ${s === situacao ? "selected" : ""}>${ROTULOS_SITUACAO_ALUNA[s]}</option>`).join("")}
+                    </select>
+                    <input type="date" class="soft-input" data-campo="termino" value="${escapeHtml(aluna.terminoEm || "")}" aria-label="Data de término ou saída">
+                    <select class="soft-input" data-campo="motivo" aria-label="Motivo da saída">
+                        <option value="">Motivo da saída (só você vê)...</option>
+                        ${MOTIVOS_SAIDA.map(m => `<option ${m === aluna.motivoSaida ? "selected" : ""}>${escapeHtml(m)}</option>`).join("")}
+                    </select>
+                    <button type="button" class="professor-action-secondary" data-salvar-situacao="${aluna.id}" style="padding: 0.4rem 0.8rem;">Salvar situação</button>
+                    <small style="color: #A26D85;">O motivo fica só com você; a coordenação vê apenas a contagem, sem nomes.</small>
+                </div>
+            </details>
         `;
+        const atualizarCampos = () => {
+            const s = card.querySelector('[data-campo="situacao"]').value;
+            card.querySelector('[data-campo="termino"]').classList.toggle("hidden", s !== "concluiu" && s !== "interrompido");
+            card.querySelector('[data-campo="motivo"]').classList.toggle("hidden", s !== "interrompido");
+        };
+        card.querySelector('[data-campo="situacao"]').addEventListener("change", atualizarCampos);
+        atualizarCampos();
+        card.querySelector("[data-salvar-situacao]").addEventListener("click", () => salvarSituacaoAluna(aluna, card));
         grid.appendChild(card);
     });
+}
+
+const ROTULOS_SITUACAO_ALUNA = { cursando: "Cursando", aguardando: "Aguardando vaga", concluiu: "Concluiu", interrompido: "Interrompido" };
+const CLASSES_SITUACAO_ALUNA = { cursando: "soft-badge--psicologia", concluiu: "soft-badge--ok", interrompido: "soft-badge--restrito" };
+const MOTIVOS_SAIDA = [
+    "Conseguiu emprego / horário de trabalho",
+    "Saúde",
+    "Transporte ou distância",
+    "Cuidado com filhos ou familiares",
+    "Segurança",
+    "Mudou de cidade",
+    "Perdeu o interesse",
+    "Outro"
+];
+
+async function salvarSituacaoAluna(aluna, card) {
+    const situacao = card.querySelector('[data-campo="situacao"]').value;
+    const terminoEm = card.querySelector('[data-campo="termino"]').value || null;
+    const motivoSaida = card.querySelector('[data-campo="motivo"]').value || null;
+    if (situacao === "interrompido" && !motivoSaida) {
+        alert("Escolha o motivo da saída.");
+        return;
+    }
+
+    const response = await CasaMulherAuth.apiFetch(`/api/cursos/${cursoIdAtual}/alunas/${aluna.id}/situacao`, {
+        method: "PUT",
+        body: { situacao, terminoEm, motivoSaida }
+    });
+    if (!response.ok) {
+        let texto = "Não foi possível salvar a situação.";
+        try { texto = (await response.json()).mensagem || texto; } catch { /* sem corpo */ }
+        alert(texto);
+        return;
+    }
+
+    await carregarAlunas();
+    const dataChamada = document.getElementById("dataChamada");
+    if (dataChamada && dataChamada.value) carregarChamadaDoDia(dataChamada.value);
+}
+
+/* Na chamada entram só as alunas que estão cursando (quem concluiu, saiu ou aguarda vaga fica de fora). */
+function alunasNaTurma() {
+    return alunasDoCurso.filter(a => !a.situacao || a.situacao === "cursando");
 }
 
 /* ==========================================================================
@@ -330,7 +400,7 @@ function carregarChamadaDoDia(data) {
         renderizarChips(atividadesSelecionadasChamada, document.getElementById("chipsAtividadesChamada"), 'chamada');
         // Junta quem já tinha registro com as alunas atuais do curso (novas matrículas entram em branco).
         const registros = (chamadaDoDia.registros || []).map(r => ({ alunaId: r.assistidaId, nome: r.nome || "", status: r.status, observacao: r.observacao || "" }));
-        alunasDoCurso.forEach(a => {
+        alunasNaTurma().forEach(a => {
             if (!registros.some(r => r.alunaId === a.id)) registros.push({ alunaId: a.id, nome: a.nome, status: null, observacao: "" });
         });
         renderizarListaChamada(registros);
@@ -349,7 +419,7 @@ function carregarChamadaDoDia(data) {
         }
         renderizarChips(atividadesSelecionadasChamada, document.getElementById("chipsAtividadesChamada"), 'chamada');
 
-        const registrosEmBranco = alunasDoCurso.map(a => ({
+        const registrosEmBranco = alunasNaTurma().map(a => ({
             alunaId: a.id,
             nome: a.nome,
             status: null,

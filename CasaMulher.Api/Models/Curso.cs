@@ -12,6 +12,9 @@ public class Curso
 
     public bool Ativo { get; set; } = true;
 
+    /// <summary>Número de vagas da turma (definido pelo ADM). Vazio = sem registro.</summary>
+    public int? Vagas { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
@@ -45,6 +48,44 @@ public class AssistidaCurso
     public Curso? Curso { get; set; }
 
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+
+    /// <summary>aguardando, cursando, concluiu ou interrompido (registrado pela professora).</summary>
+    public string Situacao { get; set; } = AssistidaCursoSituacao.Cursando;
+
+    /// <summary>Data em que a aluna terminou ou saiu do curso.</summary>
+    public DateOnly? TerminoEm { get; set; }
+
+    /// <summary>Motivo da saída: só a professora vê o texto; a Coordenação vê só a contagem.</summary>
+    public string? MotivoSaida { get; set; }
+
+    public DateTime? SituacaoAlteradaEm { get; set; }
+
+    public string? SituacaoAlteradaPorIdentificador { get; set; }
+}
+
+public static class AssistidaCursoSituacao
+{
+    public const string Aguardando = "aguardando";
+    public const string Cursando = "cursando";
+    public const string Concluiu = "concluiu";
+    public const string Interrompido = "interrompido";
+
+    public static readonly string[] Todos = [Aguardando, Cursando, Concluiu, Interrompido];
+
+    public static bool Encerrada(string? situacao) => situacao is Concluiu or Interrompido;
+
+    /// <summary>Motivos sugeridos; a professora pode escrever outro.</summary>
+    public static readonly string[] MotivosSugeridos =
+    [
+        "Conseguiu emprego / horário de trabalho",
+        "Saúde",
+        "Transporte ou distância",
+        "Cuidado com filhos ou familiares",
+        "Segurança",
+        "Mudou de cidade",
+        "Perdeu o interesse",
+        "Outro"
+    ];
 }
 
 /// <summary>Aula planejada de um curso. Pertence ao curso, não à professora, para seguir quem assumir a turma.</summary>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios da Professora - Casa da Mulher</title>
+    <link rel="stylesheet" href="style.css?v=17">
+    <link rel="stylesheet" href="relatorios.css">
+    <script src="dados.js" defer></script>
+    <script src="relatorios.js" defer></script>
+    <script src="pagina.js" defer></script>
+    <script src="rel-professora.js" defer></script>
+</head>
+<body class="soft-page">
+    <main style="max-width: 1400px; margin: 0 auto; padding: 24px 20px;">
+        <header class="soft-header">
+            <div>
+                <h1 class="soft-header-title">Casa da Mulher de Itaquaquecetuba</h1>
+                <p class="soft-header-subtitle">Aulas e chamada</p>
+            </div>
+            <div class="soft-session-card" id="sessionCard">
+                <div class="soft-clock session-trigger" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" id="sessionTrigger">
+                    <div id="currentDate"></div>
+                    <div id="currentTime"></div>
+                </div>
+                <div class="session-dropdown" id="sessionDropdown">
+                    <div class="session-user-name" id="sessionUserName">-</div>
+                    <div class="session-user-role" id="sessionUserRole">-</div>
+                    <div class="session-user-meta" id="sessionUserEmail">-</div>
+                    <div class="session-user-meta" style="margin-top: 4px;">ID: <span id="sessionUserId">-</span></div>
+                    <div class="session-actions">
+                        <a class="soft-btn soft-btn-warning" href="index.html" style="text-decoration:none; flex: 1; justify-content: center;">Voltar</a>
+                        <button type="button" id="btnSair" class="soft-btn soft-btn-danger" style="flex: 1; justify-content: center;">Sair</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <span class="rel-prototipo">Protótipo com dados fictícios. Nada desta tela está no sistema ainda.</span>
+        <div class="soft-tabs rel-tabs-sistema" aria-label="Seções">
+            <button type="button" class="soft-tab" title="Aba que já existe no sistema">Chamada</button>
+            <button type="button" class="soft-tab" title="Aba que já existe no sistema">Plano de aula</button>
+            <button type="button" class="soft-tab" title="Aba que já existe no sistema">Alunas</button>
+            <button type="button" class="soft-tab active">Relatórios</button>
+        </div>
+
+        <section class="soft-card" style="width: 100%;">
+            <h2 class="soft-card-title">Relatórios da Professora</h2>
+            <p class="rel-intro">Frequência, desistências e observações das turmas e o histórico completo de cada aluna no curso: quando entrou, quando terminou ou saiu, presenças e faltas com data, justificativas e as observações da professora.</p>
+            <div class="rel-sub-tabs">
+                <button type="button" class="rel-sub-tab active" data-aba="area">Relatório Estatístico/Geral das minhas turmas</button>
+                <button type="button" class="rel-sub-tab" data-aba="individual">Relatório individual da assistida</button>
+            </div>
+
+            <div data-painel="area">
+                <div class="rel-filtros">
+                    <div id="perArea" style="display: contents;"></div>
+                    <div id="filtrosExtraArea" style="display: contents;"></div>
+                    <div class="rel-filtros-acoes">
+                        <button type="button" class="soft-btn soft-btn-secondary" data-csv>Baixar planilha</button>
+                        <button type="button" class="soft-btn soft-btn-primary" data-imprimir>Imprimir / salvar PDF</button>
+                    </div>
+                </div>
+                <div id="saidaArea"></div>
+            </div>
+
+            <div data-painel="individual" hidden>
+                <div class="rel-filtros">
+                    <div class="soft-form-group" id="selAssistida" style="flex: 1; min-width: 280px;"></div>
+                    <div id="perInd" style="display: contents;"></div>
+
+                    <div class="rel-filtros-acoes">
+                        <button type="button" class="soft-btn soft-btn-primary" data-imprimir-ind>Imprimir / salvar PDF</button>
+                    </div>
+                </div>
+                <div id="saidaInd"></div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

@@ -150,7 +150,7 @@ var rolesCursos = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAc
 var rolesProntuarioSocial = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.AssistenteSocial);
 var rolesJuridico = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Juridico);
 var rolesPsicologia = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Psicologia);
-var rolesRelatorios = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.AssistenteSocial, PerfisAcesso.Juridico);
+var rolesRelatorios = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Recepcao, PerfisAcesso.Professor, PerfisAcesso.Juridico, PerfisAcesso.Psicologia);
 var rolesCadastroAssistidas = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Recepcao, PerfisAcesso.AssistenteSocial, PerfisAcesso.Juridico, PerfisAcesso.Psicologia);
 
 builder.Services.AddAuthorization(options =>
@@ -291,6 +291,7 @@ builder.Services.AddScoped<EquipeDbSyncService>();
 builder.Services.AddScoped<HmlDbSnapshotService>();
 builder.Services.AddScoped<AssistidasService>();
 builder.Services.AddScoped<CursosService>();
+builder.Services.AddScoped<RelatoriosService>();
 builder.Services.AddScoped<SecuritySnapshotPersistenceService>();
 builder.Services.AddScoped<TermoSigiloService>();
 builder.Services.AddScoped<HomologacaoSeedService>();

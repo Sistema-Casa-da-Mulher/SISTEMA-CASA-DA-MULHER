@@ -1,0 +1,202 @@
+/* Relatórios (aba de cada perfil). O resto vem do style.css do sistema. Gráficos só com HTML/CSS. */
+:root {
+    --rel-tinta: #5D4350;
+    --rel-tinta-2: #95748A;
+    --rel-tinta-3: #AD859B;
+    --rel-linha: #F5E2EC;
+    --rel-barra: #C48BA5;
+    --rel-barra-2: #E3BDD0;
+    --rel-fundo-barra: #FBEFF5;
+    --rel-ok: #3E8A63;
+    --rel-justificada: #C9932E;
+    --rel-falta: #C0566A;
+    --rel-neutro: #B9A6B1;
+    --rel-azul: #4F7C99;
+    --rel-roxo: #7A5A99;
+}
+
+.rel-intro { color: var(--rel-tinta-2); margin: -0.6rem 0 1.2rem; font-size: 0.92rem; line-height: 1.5; }
+.rel-sub-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 22px; }
+.rel-sub-tab { border: 1px solid #F3C9DA; background: #FFFBFD; color: #A57489; padding: 8px 18px; border-radius: 999px; font-weight: 700; font-size: 0.88rem; cursor: pointer; }
+.rel-sub-tab.active { background: #F6DCE7; color: #8A3D66; border-color: #E7B4C5; }
+
+/* barra de filtros */
+.rel-filtros { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; background: #FFFBFD; border: 1px solid var(--rel-linha); border-radius: 1.4rem; padding: 14px 18px; margin-bottom: 1.6rem; }
+.rel-filtros .soft-form-group { min-width: 170px; }
+.rel-filtros .soft-input { padding: 9px 12px; }
+.rel-filtros-acoes { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.rel-periodo-tipo { display: inline-flex; background: #F8EDF2; border-radius: 999px; padding: 3px; gap: 2px; }
+.rel-periodo-tipo button { border: none; background: transparent; padding: 8px 14px; border-radius: 999px; font-weight: 700; color: #A57489; cursor: pointer; font-size: 0.85rem; }
+.rel-periodo-tipo button.active { background: #fff; color: #8A3D66; box-shadow: 0 2px 6px rgba(160, 100, 120, 0.12); }
+.rel-check { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--rel-tinta); font-weight: 600; }
+
+/* cabeçalho do relatório (aparece também na impressão) */
+.rel-cabecalho { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; margin-bottom: 1rem; }
+.rel-cabecalho h2 { margin: 0; color: #8F6C7E; font-size: 1.35rem; }
+.rel-cabecalho .rel-periodo { color: var(--rel-tinta-2); font-weight: 600; }
+
+/* KPIs */
+.rel-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 1.4rem; }
+.rel-kpi { background: linear-gradient(125deg, #FEF1F7, #FDE9F2); border: 1px solid #FFF0F5; border-radius: 1.4rem; padding: 16px 18px; }
+.rel-kpi-valor { font-size: 2rem; font-weight: 800; color: #B47394; line-height: 1.1; display: block; }
+.rel-kpi-rotulo { display: block; color: #9B7588; font-weight: 600; font-size: 0.86rem; margin-top: 6px; }
+.rel-kpi-delta { display: block; font-size: 0.78rem; margin-top: 6px; color: var(--rel-tinta-3); font-weight: 600; }
+.rel-kpi-delta.sobe::before { content: "▲ "; }
+.rel-kpi-delta.desce::before { content: "▼ "; }
+.rel-kpi--alerta { background: #FFF4F4; border-color: #F5C8C8; }
+.rel-kpi--alerta .rel-kpi-valor { color: #A23B3B; }
+
+/* grade de blocos */
+.rel-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.4rem; }
+.rel-bloco .rel-kpis { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.rel-nowrap { white-space: nowrap; }
+.rel-bloco { background: #FFFFFFF2; border: 1px solid #FDE5F0; border-radius: 1.4rem; padding: 1.2rem 1.3rem; min-width: 0; }
+.rel-bloco h3 { margin: 0 0 4px; color: #8B586F; font-size: 1.02rem; }
+.rel-bloco .rel-nota { color: var(--rel-tinta-3); font-size: 0.8rem; margin: 0 0 12px; }
+.rel-bloco--largo { grid-column: 1 / -1; }
+
+/* barras horizontais */
+.rel-barras { display: flex; flex-direction: column; gap: 9px; }
+.rel-barra-linha { display: grid; grid-template-columns: minmax(120px, 38%) 1fr auto; gap: 10px; align-items: center; font-size: 0.86rem; color: var(--rel-tinta); position: relative; }
+.rel-barra-rotulo { line-height: 1.25; overflow-wrap: anywhere; }
+.rel-barra-trilho { display: block; background: var(--rel-fundo-barra); height: 14px; border-radius: 4px; overflow: hidden; }
+.rel-barra-valor-fill { display: block; height: 100%; background: var(--rel-barra); border-radius: 0 4px 4px 0; min-width: 2px; }
+.rel-barra-num { font-weight: 700; color: var(--rel-tinta); min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
+.rel-barra-num small { color: var(--rel-tinta-3); font-weight: 600; }
+.rel-barra-linha:hover .rel-barra-valor-fill { filter: brightness(0.92); }
+
+/* colunas por mês */
+.rel-colunas { display: flex; align-items: flex-end; gap: 6px; height: 170px; padding-top: 22px; border-bottom: 1px solid var(--rel-linha); }
+.rel-coluna { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; position: relative; min-width: 0; cursor: default; }
+.rel-coluna-fill { width: 70%; max-width: 34px; background: var(--rel-barra); border-radius: 4px 4px 0 0; min-height: 2px; }
+.rel-coluna:hover .rel-coluna-fill { filter: brightness(0.9); }
+.rel-coluna-valor { font-size: 0.74rem; font-weight: 700; color: var(--rel-tinta-2); margin-bottom: 3px; visibility: hidden; }
+.rel-coluna:hover .rel-coluna-valor, .rel-coluna.mostrar .rel-coluna-valor { visibility: visible; }
+.rel-colunas-rotulos { display: flex; gap: 6px; margin-top: 5px; }
+.rel-colunas-rotulos span { flex: 1; text-align: center; font-size: 0.68rem; color: var(--rel-tinta-3); min-width: 0; overflow: hidden; white-space: nowrap; }
+
+/* barra empilhada */
+.rel-pilha { display: flex; height: 18px; border-radius: 4px; overflow: hidden; gap: 2px; background: #fff; }
+.rel-pilha span { display: block; flex: none; height: 100%; }
+.rel-legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 0.82rem; color: var(--rel-tinta); }
+.rel-legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+/* tabelas */
+.rel-tabela-wrap { overflow-x: auto; border: 1px solid var(--rel-linha); border-radius: 1rem; }
+.rel-tabela { width: 100%; border-collapse: collapse; font-size: 0.85rem; color: var(--rel-tinta); }
+.rel-tabela th { text-align: left; background: #FCF1F6; color: #8B586F; font-weight: 700; padding: 9px 10px; white-space: nowrap; font-size: 0.8rem; }
+.rel-tabela td { padding: 8px 10px; border-top: 1px solid var(--rel-linha); vertical-align: top; }
+.rel-tabela td.num, .rel-tabela th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.rel-tabela tr:hover td { background: #FFF8FB; }
+
+/* destaques mais/menos procurados */
+.rel-podio { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem; }
+.rel-podio-card { border-radius: 1.2rem; padding: 14px 16px; border: 1px solid #FDE5F0; background: #FFFBFD; }
+.rel-podio-card h4 { margin: 0 0 8px; font-size: 0.9rem; color: #8B586F; text-transform: uppercase; letter-spacing: 0.4px; }
+.rel-podio-card ol { margin: 0; padding-left: 20px; color: var(--rel-tinta); font-size: 0.9rem; line-height: 1.7; }
+.rel-podio-card ol b { color: #8A3D66; }
+.rel-podio-card--menos { background: #FBF8FA; }
+
+/* linha do tempo */
+.rel-tempo { list-style: none; margin: 0; padding: 0 0 0 18px; border-left: 2px solid var(--rel-linha); }
+.rel-tempo li { position: relative; padding: 0 0 14px 14px; font-size: 0.87rem; color: var(--rel-tinta); }
+.rel-tempo li::before { content: ""; position: absolute; left: -25px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 3px solid var(--rel-barra); }
+.rel-tempo li.area-juridico::before { border-color: var(--rel-roxo); }
+.rel-tempo li.area-psicologia::before { border-color: var(--rel-azul); }
+.rel-tempo li.area-curso::before { border-color: var(--rel-ok); }
+.rel-tempo li.area-social::before { border-color: var(--rel-justificada); }
+.rel-tempo .rel-tempo-data { font-weight: 700; color: #8B586F; margin-right: 6px; }
+.rel-tempo .rel-tempo-quem { color: var(--rel-tinta-3); font-size: 0.8rem; }
+
+/* chamada em grade (presença por aula) */
+.rel-chamada { display: flex; flex-wrap: wrap; gap: 4px; }
+.rel-dia { width: 34px; text-align: center; border-radius: 6px; padding: 3px 0; font-size: 0.66rem; font-weight: 700; color: #fff; cursor: default; line-height: 1.2; }
+.rel-dia b { display: block; font-size: 0.8rem; }
+.rel-dia.presente { background: var(--rel-ok); }
+.rel-dia.justificada { background: var(--rel-justificada); }
+.rel-dia.faltou { background: var(--rel-falta); }
+.rel-dia.vazio { background: var(--rel-neutro); }
+
+/* risco em linha */
+.rel-risco-linha { display: flex; gap: 3px; align-items: flex-end; height: 70px; }
+.rel-risco-linha span { flex: 1; max-width: 18px; border-radius: 3px 3px 0 0; min-width: 6px; }
+.risco-baixo { background: #8DBFA3; height: 25%; }
+.risco-moderado { background: #E0B35E; height: 50%; }
+.risco-alto { background: #D9787F; height: 75%; }
+.risco-iminente { background: #A23B3B; height: 100%; }
+.risco-nulo, .risco-neutro { background: #E9DDE3; height: 8%; }
+
+.rel-dado-novo { display: inline-block; font-size: 0.68rem; font-weight: 700; color: #7A5A1E; background: #FFF3D6; border: 1px solid #F0D79B; border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
+.rel-sigilo { font-size: 0.82rem; color: #8B586F; background: #F6EAF1; border: 1px dashed #E2BCD0; border-radius: 1rem; padding: 10px 14px; }
+.rel-cartao-atend { border: 1px solid var(--rel-linha); border-radius: 1.1rem; padding: 12px 14px; margin-bottom: 10px; background: #FFFDFE; font-size: 0.86rem; color: var(--rel-tinta); }
+.rel-cartao-atend header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.rel-cartao-atend dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px 14px; margin: 6px 0; }
+.rel-cartao-atend dt { font-size: 0.72rem; color: var(--rel-tinta-3); text-transform: uppercase; font-weight: 700; }
+.rel-cartao-atend dd { margin: 0; }
+.rel-texto-sigiloso { background: #FBF5F8; border-left: 3px solid #E7BBCB; padding: 8px 10px; border-radius: 0 8px 8px 0; margin-top: 6px; }
+
+.rel-ficha { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 18px; margin: 12px 0 4px; }
+.rel-ficha dt { font-size: 0.74rem; color: var(--rel-tinta-3); text-transform: uppercase; font-weight: 700; letter-spacing: 0.4px; }
+.rel-ficha dd { margin: 2px 0 0; color: var(--rel-tinta); font-weight: 600; font-size: 0.92rem; }
+.rel-nome { font-size: 1.5rem; color: #8F6C7E; font-weight: 800; margin: 0 0 6px; }
+.rel-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* busca de assistida */
+.rel-busca { position: relative; min-width: 280px; flex: 1; }
+.rel-busca-lista { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); background: #fff; border: 1px solid #F3C9DA; border-radius: 1rem; max-height: 280px; overflow-y: auto; box-shadow: 0 12px 24px rgba(160, 100, 120, 0.15); }
+.rel-busca-lista button { display: block; width: 100%; text-align: left; border: none; background: none; padding: 9px 14px; cursor: pointer; font-size: 0.88rem; color: var(--rel-tinta); }
+.rel-busca-lista button:hover { background: #FCF1F6; }
+.rel-busca-lista small { color: var(--rel-tinta-3); }
+
+.rel-rodape { margin-top: 1.4rem; font-size: 0.78rem; color: var(--rel-tinta-3); border-top: 1px solid var(--rel-linha); padding-top: 10px; }
+a.soft-tab { text-decoration: none; display: inline-flex; align-items: center; }
+.rel-carregando { color: var(--rel-tinta-3); padding: 18px 4px; }
+.rel-sub-blocos > * + * { margin-top: 14px; }
+.rel-sub-blocos h4 { color: #8B586F; margin: 16px 0 8px; font-size: 0.92rem; }
+.rel-calor { text-align: center !important; }
+.rel-celula-sub { display: block; color: var(--rel-tinta-3); font-size: 0.76rem; font-weight: 600; }
+.rel-destaque { color: #A23B3B; font-weight: 800; }
+.rel-visao { background: #FFF6E5; border: 1px solid #F3DDAF; border-radius: 1rem; padding: 8px 14px; margin-bottom: 14px; font-size: 0.85rem; color: #7A5A1E; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.rel-erro { color: #A23B3B; font-weight: 600; }
+.rel-doc-externo { border: 1px solid var(--rel-linha); border-radius: 1rem; padding: 18px; background: #fff; color: var(--rel-tinta); line-height: 1.55; }
+#relDocImpressao { display: none; }
+
+@media (max-width: 760px) {
+    .rel-podio { grid-template-columns: 1fr; }
+    .rel-grade { grid-template-columns: 1fr; }
+    .rel-barra-linha { grid-template-columns: minmax(90px, 40%) 1fr auto; }
+    .rel-periodo-tipo { flex-wrap: wrap; border-radius: 1rem; }
+    .rel-periodo-tipo button { padding: 7px 10px; }
+    .rel-filtros-acoes { margin-left: 0; }
+    main { padding: 16px !important; }
+}
+
+/* pontos de atenção do ADM */
+.rel-pontos { margin: 10px 0 0 18px; padding: 0; line-height: 1.5; }
+.rel-pontos li { margin-bottom: 8px; }
+.rel-ponto-quem { display: block; font-size: 0.82rem; color: #7A5A99; font-weight: 600; }
+.rel-criterios { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #E2BCD0; font-size: 0.8rem; color: var(--rel-tinta-2); display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.rel-criterios input { width: 56px; padding: 3px 6px; border: 1px solid #F3C9DA; border-radius: 8px; font-size: 0.8rem; }
+.rel-sel-reg { display: flex; margin-top: 8px; font-size: 0.8rem; color: #7A5A99; }
+.soft-modal-content.rel-modal { max-width: 640px; width: calc(100% - 32px); max-height: 90vh; overflow-y: auto; color: var(--rel-tinta); }
+
+/* impressão / salvar PDF */
+@media print {
+    body.soft-page { background: #fff !important; }
+    .soft-session-card, .soft-tabs, .rel-sub-tabs, .rel-filtros, .rel-visao, .rel-nao-imprimir, [data-painel][hidden] { display: none !important; }
+    body.rel-imprimindo-doc main { display: none !important; }
+    body.rel-imprimindo-doc #relDocImpressao { display: block !important; }
+    .rel-doc-externo { border: none; padding: 0; }
+    .soft-header, .soft-card, .rel-bloco, .rel-kpi { box-shadow: none !important; }
+    .soft-card { border: none; padding: 0; }
+    .rel-kpi, .rel-cartao-atend, .rel-tabela tr, .rel-tempo li, .rel-barra-linha { break-inside: avoid; }
+    .rel-bloco h3 { break-after: avoid; }
+    .soft-header-title, .soft-card-title { background: none !important; color: #8F6C7E !important; -webkit-text-fill-color: #8F6C7E; }
+    .rel-intro { display: none; }
+    .rel-tabela-wrap { overflow: visible; }
+    .rel-tabela { font-size: 0.72rem; }
+    .rel-tabela th, .rel-tabela td { padding: 5px 6px; }
+    .rel-coluna-valor { visibility: visible; }
+    .rel-dia, .rel-pilha span, .rel-barra-valor-fill, .rel-coluna-fill, .rel-risco-linha span, .rel-legenda i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .rel-busca-lista { display: none !important; }
+}

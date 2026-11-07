@@ -285,6 +285,18 @@ public class AssistidasController : ControllerBase
         switch (request.Area)
         {
             case AssistidaOrigem.Juridico:
+                if (assistida.JuridicoEncaminhamentoCanceladoEm is not null)
+                {
+                    // Novo encaminhamento depois de um cancelamento: volta para a fila do zero.
+                    assistida.EncaminhadaJuridicoEm = DateTime.UtcNow;
+                    assistida.JuridicoEncaminhamentoCanceladoEm = null;
+                    assistida.JuridicoMotivoCancelamento = null;
+                    assistida.JuridicoCanceladoPorIdentificador = null;
+                    assistida.JuridicoAgendadoPara = null;
+                    assistida.JuridicoAgendadoEm = null;
+                    assistida.JuridicoAgendadoPorIdentificador = null;
+                }
+
                 assistida.EncaminhadaJuridicoEm ??= DateTime.UtcNow;
                 rotulo = "Jurídico";
                 break;

@@ -234,6 +234,27 @@ namespace CasaMulher.Api.Migrations
                     b.Property<bool>("EnderecoSigiloso")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("JuridicoAgendadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("JuridicoAgendadoPara")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("JuridicoAgendadoPorIdentificador")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("JuridicoCanceladoPorIdentificador")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("JuridicoEncaminhamentoCanceladoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("JuridicoMotivoCancelamento")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("MotivoRestricao")
                         .HasMaxLength(40)
                         .HasColumnType("TEXT");
@@ -298,6 +319,27 @@ namespace CasaMulher.Api.Migrations
 
                     b.Property<int>("CursoId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("MotivoSaida")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Situacao")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("cursando");
+
+                    b.Property<DateTime?>("SituacaoAlteradaEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SituacaoAlteradaPorIdentificador")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("TerminoEm")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -734,6 +776,9 @@ namespace CasaMulher.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("Vagas")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 

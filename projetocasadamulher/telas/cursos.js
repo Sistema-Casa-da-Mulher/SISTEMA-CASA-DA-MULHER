@@ -56,7 +56,12 @@ function renderizarCursos() {
     el.innerHTML = cursos.map((c) => `
         <div class="entity-card" data-id="${c.id}">
             <input type="text" class="soft-input" data-campo="nome" value="${escCursos(c.nome)}" maxlength="120" aria-label="Nome do curso">
-            <div class="entity-info" style="margin-top: 8px;">Alunas: ${c.totalAlunas} · Professoras: ${c.totalProfessoras}</div>
+            <div class="entity-info" style="margin-top: 8px;">Alunas: ${c.totalAlunas} (${c.alunasAtivas} cursando) · Professoras: ${c.totalProfessoras}</div>
+            <div class="entity-info" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <label for="vagas-${c.id}">Vagas:</label>
+                <input type="number" id="vagas-${c.id}" class="soft-input" data-campo="vagas" min="1" max="1000" value="${c.vagas ?? ""}" placeholder="sem registro" style="max-width:120px;">
+                <button type="button" class="soft-btn soft-btn-secondary" data-acao="vagas">Salvar vagas</button>
+            </div>
             <div class="entity-info"><span class="soft-badge ${c.ativo ? "soft-badge--ok" : "soft-badge--restrito"}">${c.ativo ? "Ativo" : "Desativado"}</span></div>
             <div class="entity-actions">
                 <button type="button" class="soft-btn soft-btn-primary" data-acao="renomear">Salvar nome</button>
@@ -91,7 +96,10 @@ async function acaoCurso(e) {
     const acao = botao.dataset.acao;
     let response;
 
-    if (acao === "renomear") {
+    if (acao === "vagas") {
+        const valor = card.querySelector('[data-campo="vagas"]').value.trim();
+        response = await CasaMulherAuth.apiFetch(`/api/cursos/${id}/vagas`, { method: "PUT", body: { vagas: valor === "" ? null : Number(valor) } });
+    } else if (acao === "renomear") {
         const nome = card.querySelector('[data-campo="nome"]').value.trim();
         response = await CasaMulherAuth.apiFetch(`/api/cursos/${id}`, { method: "PUT", body: { nome } });
     } else if (acao === "desativar") {

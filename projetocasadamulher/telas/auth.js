@@ -27,7 +27,7 @@
         social: ["adm", "as_social"],
         juridico: ["adm", "juridico"],
         psicologia: ["adm", "psicologia"],
-        relatorios: ["adm", "as_social", "juridico"]
+        relatorios: ["adm", "recepcao", "professor", "juridico", "psicologia"]
     };
 
     const AREAS_EQUIPE_DEV = [

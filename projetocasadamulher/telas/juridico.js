@@ -93,6 +93,10 @@ function bindEventos() {
         if (botao) removerResponsavel(botao.dataset.remover);
     });
 
+    document.getElementById("btnAgendar").addEventListener("click", agendarAtendimento);
+    document.getElementById("btnCancelarEncaminhamento").addEventListener("click", cancelarEncaminhamento);
+    document.getElementById("btnReencaminhar").addEventListener("click", reencaminhar);
+
     document.getElementById("atendimentoForm").addEventListener("submit", registrarAtendimento);
     document.getElementById("tipoDemanda").addEventListener("change", (e) => {
         document.getElementById("tipoDemandaOutro").classList.toggle("hidden", e.target.value !== "outro");
@@ -181,6 +185,7 @@ function cardResumo(a) {
             ${a.encaminhadaJuridicoEm ? `<div class="entity-info">Encaminhada em: ${esc(AF().formatarData(a.encaminhadaJuridicoEm))}</div>` : ""}
             <div class="entity-info">Com: ${responsaveis}</div>
             <div class="entity-info">Atendimentos: ${a.totalAtendimentos}${a.proximoRetorno ? ` · Retorno ${esc(AF().formatarData(a.proximoRetorno))}` : ""}</div>
+            ${a.agendadoPara ? `<div class="entity-info">1º atendimento agendado: ${esc(formatarDataHora(a.agendadoPara))}</div>` : ""}
             <div class="entity-info" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">${badges.join("")}</div>
             <div class="entity-actions">
                 <button type="button" class="soft-btn soft-btn-primary" data-abrir="${a.assistidaId}">Abrir ficha</button>
@@ -314,6 +319,85 @@ function corrigirDados() {
 }
 
 /* ---------------- Ficha ---------------- */
+/* ---------------- Encaminhamento: agendamento e cancelamento (a Recepção vê só a situação) ---------------- */
+function formatarDataHora(valor) {
+    const d = new Date(valor);
+    return Number.isNaN(d.getTime()) ? "-" : `${d.toLocaleDateString("pt-BR")} às ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+function renderizarEncaminhamento(f, ehJuridico) {
+    const card = document.getElementById("cardEncaminhamento");
+    const mostrar = ehJuridico && f.encaminhadaJuridicoEm && f.atendimentos.length === 0;
+    card.classList.toggle("hidden", !mostrar);
+    if (!mostrar) return;
+
+    const cancelado = Boolean(f.encaminhamentoCanceladoEm);
+    document.getElementById("encaminhamentoSituacao").textContent = cancelado
+        ? `Cancelado em ${formatarDataHora(f.encaminhamentoCanceladoEm)}. Motivo: ${f.motivoCancelamento || "-"}`
+        : f.agendadoPara
+            ? `Encaminhada em ${AF().formatarData(f.encaminhadaJuridicoEm)} · primeiro atendimento agendado para ${formatarDataHora(f.agendadoPara)}.`
+            : `Encaminhada em ${AF().formatarData(f.encaminhadaJuridicoEm)} · aguardando atendimento.`;
+    document.getElementById("blocoEncaminhamentoAberto").classList.toggle("hidden", cancelado);
+    document.getElementById("blocoReencaminhar").classList.toggle("hidden", !cancelado);
+    document.getElementById("motivoCancelamento").value = "";
+
+    const campo = document.getElementById("dataAgendamento");
+    if (f.agendadoPara) {
+        const d = new Date(f.agendadoPara);
+        const pad = (x) => String(x).padStart(2, "0");
+        campo.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } else {
+        campo.value = "";
+    }
+}
+
+async function agendarAtendimento() {
+    if (enviando || !fichaAtual) return;
+    const dataHora = document.getElementById("dataAgendamento").value;
+    if (!dataHora) return mostrarMensagem("Escolha a data e a hora do primeiro atendimento.", "error");
+
+    enviando = true;
+    try {
+        const response = await api(`/api/juridico/assistidas/${fichaAtual.assistida.id}/agendamento`, { method: "PUT", body: { dataHora } });
+        if (!response.ok) return mostrarMensagem(await erroDe(response, "Não foi possível agendar."), "error");
+        const corpo = await response.json();
+        mostrarMensagem(corpo.mensagem, "success");
+        await abrirFicha(fichaAtual.assistida.id);
+    } finally {
+        enviando = false;
+    }
+}
+
+async function cancelarEncaminhamento() {
+    if (enviando || !fichaAtual) return;
+    const motivo = document.getElementById("motivoCancelamento").value.trim();
+    if (motivo.length < 5) return mostrarMensagem("Explique o motivo do cancelamento.", "error");
+    if (!confirm("Cancelar o encaminhamento? A assistida sai da fila do Jurídico. A Recepção vê só \"Cancelado\", sem o motivo.")) return;
+
+    enviando = true;
+    try {
+        const response = await api(`/api/juridico/assistidas/${fichaAtual.assistida.id}/cancelar-encaminhamento`, { method: "POST", body: { motivo } });
+        if (!response.ok) return mostrarMensagem(await erroDe(response, "Não foi possível cancelar."), "error");
+        mostrarMensagem((await response.json()).mensagem, "success");
+        await abrirFicha(fichaAtual.assistida.id);
+    } finally {
+        enviando = false;
+    }
+}
+
+async function reencaminhar() {
+    if (enviando || !fichaAtual) return;
+    enviando = true;
+    try {
+        const response = await api(`/api/assistidas/${fichaAtual.assistida.id}/encaminhar`, { method: "POST", body: { area: "juridico" } });
+        if (!response.ok) return mostrarMensagem(await erroDe(response, "Não foi possível encaminhar."), "error");
+        mostrarMensagem("Encaminhada de novo: voltou para a fila do Jurídico.", "success");
+        await abrirFicha(fichaAtual.assistida.id);
+    } finally {
+        enviando = false;
+    }
+}
+
 async function abrirFicha(assistidaId) {
     const response = await api(`/api/juridico/casos/${assistidaId}`);
     if (!response.ok) {
@@ -358,6 +442,8 @@ function renderizarFicha() {
     document.getElementById("fichaDados").innerHTML = dados
         .map(([rotulo, valor]) => `<div><dt>${esc(rotulo)}</dt><dd>${esc(valor)}</dd></div>`)
         .join("");
+
+    renderizarEncaminhamento(f, ehJuridico);
 
     document.getElementById("btnCorrigirDados").classList.toggle("hidden", !ehJuridico);
     document.getElementById("btnEncaminharPsicologia").classList.toggle("hidden", !ehJuridico || f.encaminhadaPsicologia);

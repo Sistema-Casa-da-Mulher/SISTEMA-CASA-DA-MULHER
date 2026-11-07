@@ -27,6 +27,9 @@ public class JuridicoAssistidaResumoResponse
     public int TotalAtendimentos { get; set; }
     public DateTime? UltimoAtendimentoEm { get; set; }
     public string? ProximoRetorno { get; set; }
+
+    /// <summary>Primeiro atendimento agendado pelo Jurídico (data e hora em UTC).</summary>
+    public DateTime? AgendadoPara { get; set; }
 }
 
 public class AdendoJuridicoResponse
@@ -85,6 +88,14 @@ public class CasoJuridicoDetalheResponse
     public bool AlertaRiscoPsicologico { get; set; }
 
     public bool EncaminhadaPsicologia { get; set; }
+
+    public DateTime? EncaminhadaJuridicoEm { get; set; }
+
+    public DateTime? AgendadoPara { get; set; }
+
+    public DateTime? EncaminhamentoCanceladoEm { get; set; }
+
+    public string? MotivoCancelamento { get; set; }
 
     public List<AtendimentoJuridicoResponse> Atendimentos { get; set; } = [];
 }

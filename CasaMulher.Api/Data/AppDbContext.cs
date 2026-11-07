@@ -448,6 +448,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(a => a.CadastradaPorEmail).HasMaxLength(256);
             entity.Property(a => a.MotivoRestricao).HasMaxLength(40);
             entity.Property(a => a.RestricaoAlteradaPorIdentificador).HasMaxLength(80);
+            entity.Property(a => a.JuridicoAgendadoPorIdentificador).HasMaxLength(80);
+            entity.Property(a => a.JuridicoMotivoCancelamento).HasMaxLength(500);
+            entity.Property(a => a.JuridicoCanceladoPorIdentificador).HasMaxLength(80);
         });
 
         builder.Entity<CasoJuridico>(entity =>
@@ -557,6 +560,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(a => a.CursoId);
             entity.HasOne(a => a.Assistida).WithMany(a => a.Cursos).HasForeignKey(a => a.AssistidaId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(a => a.Curso).WithMany().HasForeignKey(a => a.CursoId).OnDelete(DeleteBehavior.Restrict);
+            entity.Property(a => a.Situacao).IsRequired().HasMaxLength(20).HasDefaultValue(AssistidaCursoSituacao.Cursando);
+            entity.Property(a => a.MotivoSaida).HasMaxLength(300);
+            entity.Property(a => a.SituacaoAlteradaPorIdentificador).HasMaxLength(80);
         });
 
         builder.Entity<PlanoAula>(entity =>

@@ -70,6 +70,10 @@ public class CursosController : ControllerBase
         var professoras = await _dbContext.ProfessoresCursos.AsNoTracking()
             .GroupBy(p => p.CursoId).Select(g => new { g.Key, Total = g.Count() })
             .ToDictionaryAsync(g => g.Key, g => g.Total, cancellationToken);
+        var ativas = await _dbContext.AssistidasCursos.AsNoTracking()
+            .Where(a => a.Assistida!.Ativa && a.Situacao == AssistidaCursoSituacao.Cursando)
+            .GroupBy(a => a.CursoId).Select(g => new { g.Key, Total = g.Count() })
+            .ToDictionaryAsync(g => g.Key, g => g.Total, cancellationToken);
         var comHistorico = await CursosComHistoricoAsync(cancellationToken);
 
         return Ok(cursos.Select(c => new CursoResponse
@@ -79,8 +83,37 @@ public class CursosController : ControllerBase
             Ativo = c.Ativo,
             TotalAlunas = incluirInativos ? alunas.GetValueOrDefault(c.Id) : 0,
             TotalProfessoras = incluirInativos ? professoras.GetValueOrDefault(c.Id) : 0,
-            PodeApagar = incluirInativos && !comHistorico.Contains(c.Id)
+            PodeApagar = incluirInativos && !comHistorico.Contains(c.Id),
+            Vagas = incluirInativos ? c.Vagas : null,
+            AlunasAtivas = incluirInativos ? ativas.GetValueOrDefault(c.Id) : 0
         }).ToList());
+    }
+
+    /// <summary>Vagas da turma (usadas na ocupação dos relatórios). Vazio = sem registro.</summary>
+    [HttpPut("{id:int}/vagas")]
+    [Authorize(Policy = PoliticasAcesso.SomenteAdm)]
+    public async Task<IActionResult> DefinirVagas(int id, VagasCursoRequest request, CancellationToken cancellationToken)
+    {
+        var curso = await _dbContext.Cursos.SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+        if (curso is null) return NotFound(new { mensagem = "Curso não encontrado." });
+
+        if (request.Vagas is < 1 or > 1000)
+        {
+            return BadRequest(new { mensagem = "Informe um número de vagas entre 1 e 1000 (ou deixe em branco)." });
+        }
+
+        var anterior = curso.Vagas;
+        curso.Vagas = request.Vagas;
+        curso.AtualizadoEm = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _auditoria.RegistrarAsync(
+            "CURSO_VAGAS_ALTERADAS",
+            "Curso",
+            id.ToString(CultureInfo.InvariantCulture),
+            $"Alterou as vagas do curso \"{curso.Nome}\" de {anterior?.ToString(CultureInfo.InvariantCulture) ?? "sem registro"} para {request.Vagas?.ToString(CultureInfo.InvariantCulture) ?? "sem registro"}.");
+        await _snapshot.PersistAsync("curso_vagas", CancellationToken.None);
+        return Ok(new { mensagem = request.Vagas is null ? "Vagas sem registro." : $"Vagas atualizadas: {request.Vagas}." });
     }
 
     [HttpPost]
@@ -235,7 +268,84 @@ public class CursosController : ControllerBase
         if (usuario is null) return Unauthorized();
         if (!await _cursos.ProfessoraTemCursoAsync(usuario, id, cancellationToken)) return ForbidCurso();
 
-        return Ok(await CarregarAlunasAsync(id, cancellationToken));
+        var alunas = await CarregarAlunasAsync(id, cancellationToken);
+        if (usuario.Perfil != PerfisAcesso.Professor)
+        {
+            // O motivo da saída fica só com a professora.
+            alunas.ForEach(a => a.MotivoSaida = null);
+        }
+
+        return Ok(alunas);
+    }
+
+    /// <summary>Professora registra a situação da aluna no curso: término, saída e motivo.</summary>
+    [HttpPut("{id:int}/alunas/{assistidaId:int}/situacao")]
+    [Authorize(Policy = PoliticasAcesso.AcessoCursos)]
+    public async Task<IActionResult> DefinirSituacaoAluna(int id, int assistidaId, SituacaoAlunaRequest request, CancellationToken cancellationToken)
+    {
+        var usuario = await _assistidas.ObterUsuarioAsync(User, cancellationToken);
+        if (usuario is null) return Unauthorized();
+        if (!await _cursos.ProfessoraTemCursoAsync(usuario, id, cancellationToken)) return ForbidCurso();
+
+        var vinculo = await _dbContext.AssistidasCursos
+            .Include(v => v.Assistida)
+            .SingleOrDefaultAsync(v => v.CursoId == id && v.AssistidaId == assistidaId && v.Assistida!.Ativa && !v.Assistida.AcessoRestrito, cancellationToken);
+        if (vinculo is null) return NotFound(new { mensagem = "Aluna não encontrada neste curso." });
+
+        if (!AssistidaCursoSituacao.Todos.Contains(request.Situacao))
+        {
+            return BadRequest(new { mensagem = "Situação inválida." });
+        }
+
+        DateOnly? termino = null;
+        string? motivo = null;
+        if (AssistidaCursoSituacao.Encerrada(request.Situacao))
+        {
+            var hoje = RelatoriosService.Local(DateTime.UtcNow);
+            if (string.IsNullOrWhiteSpace(request.TerminoEm))
+            {
+                termino = hoje;
+            }
+            else if (DateOnly.TryParseExact(request.TerminoEm, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var data))
+            {
+                termino = data;
+            }
+            else
+            {
+                return BadRequest(new { mensagem = "Data de término inválida." });
+            }
+
+            if (termino > hoje || termino < RelatoriosService.Local(vinculo.CriadoEm))
+            {
+                return BadRequest(new { mensagem = "A data de término deve ficar entre a entrada no curso e hoje." });
+            }
+
+            if (request.Situacao == AssistidaCursoSituacao.Interrompido)
+            {
+                motivo = Limitar(request.MotivoSaida?.Trim(), 300);
+                if (string.IsNullOrWhiteSpace(motivo))
+                {
+                    return BadRequest(new { mensagem = "Escolha o motivo da saída." });
+                }
+            }
+        }
+
+        vinculo.Situacao = request.Situacao;
+        vinculo.TerminoEm = termino;
+        vinculo.MotivoSaida = motivo;
+        vinculo.SituacaoAlteradaEm = DateTime.UtcNow;
+        vinculo.SituacaoAlteradaPorIdentificador = usuario.Identificador;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // O motivo não vai para a auditoria: fica só com a professora.
+        await _auditoria.RegistrarAsync(
+            "CURSO_ALUNA_SITUACAO",
+            "AssistidaCurso",
+            vinculo.Id.ToString(CultureInfo.InvariantCulture),
+            $"{usuario.Identificador} marcou a aluna #{assistidaId} como \"{request.Situacao}\" no curso #{id}.");
+        await _snapshot.PersistAsync("curso_aluna_situacao", CancellationToken.None);
+
+        return Ok(new { mensagem = "Situação da aluna atualizada." });
     }
 
     [HttpGet("{id:int}/aulas")]
@@ -456,7 +566,11 @@ public class CursosController : ControllerBase
                 Id = v.AssistidaId,
                 Nome = v.Assistida!.Nome,
                 Telefone = v.Assistida.SemTelefoneSeguro || v.Assistida.ContatoSeguro == AssistidaContatoSeguro.NaoLigar ? null : v.Assistida.Telefone,
-                DataAcolhimento = v.Assistida.CriadoEm
+                DataAcolhimento = v.Assistida.CriadoEm,
+                Situacao = v.Situacao,
+                InicioEm = v.CriadoEm,
+                TerminoEm = v.TerminoEm == null ? null : v.TerminoEm.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                MotivoSaida = v.MotivoSaida
             })
             .ToListAsync(cancellationToken);
     }

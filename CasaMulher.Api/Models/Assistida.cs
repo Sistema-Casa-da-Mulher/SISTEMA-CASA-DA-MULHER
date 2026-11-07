@@ -48,6 +48,20 @@ public class Assistida
     /// <summary>Preenchido quando a assistida é encaminhada ao Jurídico.</summary>
     public DateTime? EncaminhadaJuridicoEm { get; set; }
 
+    /// <summary>Data e hora marcadas pelo Jurídico para o primeiro atendimento.</summary>
+    public DateTime? JuridicoAgendadoPara { get; set; }
+
+    public DateTime? JuridicoAgendadoEm { get; set; }
+
+    public string? JuridicoAgendadoPorIdentificador { get; set; }
+
+    /// <summary>Encaminhamento ao Jurídico cancelado pelo próprio Jurídico (a Recepção vê só "Cancelado").</summary>
+    public DateTime? JuridicoEncaminhamentoCanceladoEm { get; set; }
+
+    public string? JuridicoMotivoCancelamento { get; set; }
+
+    public string? JuridicoCanceladoPorIdentificador { get; set; }
+
     /// <summary>Preenchido quando a assistida é encaminhada à Psicologia.</summary>
     public DateTime? EncaminhadaPsicologiaEm { get; set; }
 

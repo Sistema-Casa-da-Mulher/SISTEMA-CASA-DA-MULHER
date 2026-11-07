@@ -80,6 +80,7 @@ public class JuridicoController : ControllerBase
             filtradas = escopo switch
             {
                 "fila" => filtradas.Where(a => a.EncaminhadaJuridicoEm is not null
+                    && a.JuridicoEncaminhamentoCanceladoEm is null
                     && (!casos.TryGetValue(a.Id, out var c) || c.Atendimentos.Count == 0)),
                 "minhas" => filtradas.Where(a => casos.TryGetValue(a.Id, out var c)
                     && c.Responsaveis.Any(r => r.UserId == usuario.UserId)),
@@ -143,6 +144,10 @@ public class JuridicoController : ControllerBase
             resposta.AcompanhamentoPsicologico = psicologico is not null;
             resposta.AlertaRiscoPsicologico = psicologico is not null && PsicologiaCatalogo.RiscoElevado(psicologico.RiscoAtual);
             resposta.EncaminhadaPsicologia = assistida.EncaminhadaPsicologiaEm is not null;
+            resposta.EncaminhadaJuridicoEm = assistida.EncaminhadaJuridicoEm;
+            resposta.AgendadoPara = assistida.JuridicoAgendadoPara;
+            resposta.EncaminhamentoCanceladoEm = assistida.JuridicoEncaminhamentoCanceladoEm;
+            resposta.MotivoCancelamento = assistida.JuridicoMotivoCancelamento;
         }
 
         // Remove o que é do Jurídico para quem só pode ver metadados.
@@ -524,6 +529,99 @@ public class JuridicoController : ControllerBase
         });
     }
 
+    /// <summary>Agenda o primeiro atendimento. A Recepção passa a ver "Agendado para dd/mm".</summary>
+    [HttpPut("assistidas/{assistidaId:int}/agendamento")]
+    public async Task<IActionResult> Agendar(int assistidaId, AgendarJuridicoRequest request, CancellationToken cancellationToken)
+    {
+        var usuario = await _assistidas.ObterUsuarioAsync(User, cancellationToken);
+        if (usuario is null) return Unauthorized();
+        if (!AssistidasService.AtuaComoJuridico(usuario.Perfil))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { mensagem = "Somente o Jurídico agenda atendimentos." });
+        }
+
+        if (!DateTime.TryParseExact(request.DataHora, ["yyyy-MM-ddTHH:mm", "yyyy-MM-ddTHH:mm:ss"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var local))
+        {
+            return BadRequest(new { mensagem = "Informe a data e a hora do atendimento." });
+        }
+
+        var quando = RelatoriosService.ParaUtc(local);
+        if (quando < DateTime.UtcNow.AddDays(-1) || quando > DateTime.UtcNow.AddYears(1))
+        {
+            return BadRequest(new { mensagem = "Escolha uma data entre hoje e os próximos 12 meses." });
+        }
+
+        var assistida = await _dbContext.Assistidas.SingleOrDefaultAsync(a => a.Id == assistidaId && a.Ativa, cancellationToken);
+        if (assistida is null) return NotFound(new { mensagem = "Assistida não encontrada." });
+
+        var erro = await ValidarEncaminhamentoAbertoAsync(assistida, cancellationToken);
+        if (erro is not null) return BadRequest(new { mensagem = erro });
+
+        assistida.JuridicoAgendadoPara = quando;
+        assistida.JuridicoAgendadoEm = DateTime.UtcNow;
+        assistida.JuridicoAgendadoPorIdentificador = usuario.Identificador;
+        assistida.AtualizadoEm = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _auditoria.RegistrarAsync(
+            "JURIDICO_AGENDAMENTO_REGISTRADO",
+            "Assistida",
+            assistida.Id.ToString(CultureInfo.InvariantCulture),
+            $"{usuario.Identificador} agendou o primeiro atendimento jurídico da assistida #{assistida.Id} para {local:dd/MM/yyyy HH:mm}.");
+
+        var snapshot = await _snapshot.PersistAsync("juridico_agendamento", CancellationToken.None);
+        return Ok(new { mensagem = $"Primeiro atendimento agendado para {local:dd/MM/yyyy} às {local:HH:mm}.", agendadoPara = quando, avisoSnapshot = snapshot.AvisoSnapshot });
+    }
+
+    /// <summary>Cancela o encaminhamento (sai da fila). O motivo fica só no Jurídico; a Recepção vê só "Cancelado".</summary>
+    [HttpPost("assistidas/{assistidaId:int}/cancelar-encaminhamento")]
+    public async Task<IActionResult> CancelarEncaminhamento(int assistidaId, CancelarEncaminhamentoJuridicoRequest request, CancellationToken cancellationToken)
+    {
+        var usuario = await _assistidas.ObterUsuarioAsync(User, cancellationToken);
+        if (usuario is null) return Unauthorized();
+        if (!AssistidasService.AtuaComoJuridico(usuario.Perfil))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { mensagem = "Somente o Jurídico cancela o encaminhamento." });
+        }
+
+        var motivo = request.Motivo?.Trim() ?? string.Empty;
+        if (motivo.Length < 5 || motivo.Length > 500)
+        {
+            return BadRequest(new { mensagem = "Explique o motivo do cancelamento (entre 5 e 500 caracteres)." });
+        }
+
+        var assistida = await _dbContext.Assistidas.SingleOrDefaultAsync(a => a.Id == assistidaId && a.Ativa, cancellationToken);
+        if (assistida is null) return NotFound(new { mensagem = "Assistida não encontrada." });
+
+        var erro = await ValidarEncaminhamentoAbertoAsync(assistida, cancellationToken);
+        if (erro is not null) return BadRequest(new { mensagem = erro });
+
+        assistida.JuridicoEncaminhamentoCanceladoEm = DateTime.UtcNow;
+        assistida.JuridicoMotivoCancelamento = motivo;
+        assistida.JuridicoCanceladoPorIdentificador = usuario.Identificador;
+        assistida.AtualizadoEm = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // O motivo não vai para a auditoria: fica só na ficha do Jurídico.
+        await _auditoria.RegistrarAsync(
+            "JURIDICO_ENCAMINHAMENTO_CANCELADO",
+            "Assistida",
+            assistida.Id.ToString(CultureInfo.InvariantCulture),
+            $"{usuario.Identificador} cancelou o encaminhamento ao Jurídico da assistida #{assistida.Id}.");
+
+        var snapshot = await _snapshot.PersistAsync("juridico_encaminhamento_cancelado", CancellationToken.None);
+        return Ok(new { mensagem = "Encaminhamento cancelado. A assistida saiu da fila.", avisoSnapshot = snapshot.AvisoSnapshot });
+    }
+
+    private async Task<string?> ValidarEncaminhamentoAbertoAsync(Assistida assistida, CancellationToken cancellationToken)
+    {
+        if (assistida.EncaminhadaJuridicoEm is null) return "Esta assistida não foi encaminhada ao Jurídico.";
+        if (assistida.JuridicoEncaminhamentoCanceladoEm is not null) return "Este encaminhamento já foi cancelado. Para reabrir, encaminhe de novo pela ficha.";
+
+        var jaAtendida = await _dbContext.AtendimentosJuridicos.AnyAsync(at => at.Caso!.AssistidaId == assistida.Id, cancellationToken);
+        return jaAtendida ? "O primeiro atendimento já foi registrado." : null;
+    }
+
     [HttpGet("profissionais")]
     public async Task<ActionResult<List<ResponsavelJuridicoResponse>>> ListarProfissionais(CancellationToken cancellationToken)
     {
@@ -650,7 +748,8 @@ public class JuridicoController : ControllerBase
             SouResponsavel = souResponsavel,
             TotalAtendimentos = caso?.Atendimentos.Count ?? 0,
             UltimoAtendimentoEm = ultimo?.CriadoEm,
-            ProximoRetorno = podeVerDatas ? ultimo?.DataRetorno?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : null
+            ProximoRetorno = podeVerDatas ? ultimo?.DataRetorno?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : null,
+            AgendadoPara = caso is null || caso.Atendimentos.Count == 0 ? a.JuridicoAgendadoPara : null
         };
     }
 

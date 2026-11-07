@@ -146,10 +146,10 @@
         }
     </style>
     <script src="config.js" defer></script>
-    <script src="auth.js?v=2" defer></script>
-    <script src="app.js?v=16" defer></script>
+    <script src="auth.js?v=3" defer></script>
+    <script src="app.js?v=17" defer></script>
     <script src="assistida-form.js?v=3" defer></script>
-    <script src="juridico.js?v=4" defer></script>
+    <script src="juridico.js?v=5" defer></script>
 </head>
 <body class="soft-page">
     <main id="juridicoPage" style="max-width: 1400px; margin: 0 auto; padding: 24px 20px;">
@@ -182,6 +182,7 @@
                 <button type="button" class="soft-tab" data-tab="assistidas">Assistidas</button>
                 <button type="button" class="soft-tab" data-tab="cadastro">Cadastrar assistida</button>
                 <button type="button" class="soft-tab" data-tab="indicadores">Indicadores</button>
+                <a class="soft-tab" href="relatorios.html">Relat&oacute;rios</a>
                 <button type="button" class="soft-tab hidden" data-tab="ficha" id="tabFicha">Ficha</button>
             </div>
 
@@ -345,6 +346,26 @@
                             <option value="pedido_assistida">Pedido da pr&oacute;pria assistida</option>
                         </select>
                         <button type="button" id="btnRestricao" class="soft-btn soft-btn-danger">Marcar acesso restrito</button>
+                    </div>
+                </div>
+
+                <div class="soft-card hidden" style="width: 100%; margin-top: 16px;" id="cardEncaminhamento">
+                    <h2 class="soft-card-title">Encaminhamento ao Jur&iacute;dico</h2>
+                    <p class="section-intro" id="encaminhamentoSituacao"></p>
+                    <div id="blocoEncaminhamentoAberto">
+                        <p class="section-intro" style="margin-top: 8px;">A Recep&ccedil;&atilde;o v&ecirc; s&oacute; a situa&ccedil;&atilde;o (aguardando, agendado, primeiro atendimento realizado ou cancelado), nunca o motivo.</p>
+                        <div class="juridico-linha-acoes">
+                            <label for="dataAgendamento" style="font-weight: 700; color: #AD859B; font-size: 0.85rem; text-transform: uppercase;">Primeiro atendimento</label>
+                            <input type="datetime-local" id="dataAgendamento" class="soft-input" style="max-width: 260px;">
+                            <button type="button" id="btnAgendar" class="soft-btn soft-btn-primary">Agendar</button>
+                        </div>
+                        <div class="juridico-linha-acoes">
+                            <input type="text" id="motivoCancelamento" class="soft-input" maxlength="500" placeholder="Motivo do cancelamento (fica s&oacute; no Jur&iacute;dico)" style="flex: 1; min-width: 240px;">
+                            <button type="button" id="btnCancelarEncaminhamento" class="soft-btn soft-btn-danger">Cancelar encaminhamento</button>
+                        </div>
+                    </div>
+                    <div class="juridico-linha-acoes hidden" id="blocoReencaminhar">
+                        <button type="button" id="btnReencaminhar" class="soft-btn soft-btn-warning">Encaminhar de novo ao Jur&iacute;dico</button>
                     </div>
                 </div>
 
