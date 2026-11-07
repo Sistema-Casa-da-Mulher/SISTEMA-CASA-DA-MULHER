@@ -217,9 +217,24 @@ public class AgendaAulaCancelarRequest
 public class AgendaDiaEspecialRequest
 {
     public string Data { get; set; } = string.Empty;
+    /// <summary>Que data é esta: feriado, evento ou outra (data comum).</summary>
     public string Tipo { get; set; } = string.Empty;
+    /// <summary>Como a Casa funciona: normal, fechada ou especial.</summary>
+    public string Funcionamento { get; set; } = "normal";
+    public string? HorarioInicio { get; set; }
+    public string? HorarioFim { get; set; }
     public string Titulo { get; set; } = string.Empty;
     public string? Nota { get; set; }
+}
+
+/// <summary>Compromissos já marcados que ficam fora do funcionamento: só números (sigilo).</summary>
+public class AgendaAfetadosResponse
+{
+    public int Total { get; set; }
+    public Dictionary<string, int> Atendimentos { get; set; } = [];
+    public int Aulas { get; set; }
+    public int Compromissos { get; set; }
+    public string Texto { get; set; } = string.Empty;
 }
 
 public class AgendaMotivoRequest
@@ -243,9 +258,16 @@ public class AgendaDiaEspecialResponse
     public int Id { get; set; }
     public string Data { get; set; } = string.Empty;
     public string Tipo { get; set; } = string.Empty;
+    public string Funcionamento { get; set; } = string.Empty;
+    public string? HorarioInicio { get; set; }
+    public string? HorarioFim { get; set; }
+    public string TextoFuncionamento { get; set; } = string.Empty;
     public string Titulo { get; set; } = string.Empty;
     public string? Nota { get; set; }
     public string? Reaberta { get; set; }
+    /// <summary>Quantos compromissos marcados ainda estão fora do funcionamento (pendentes de tratar).</summary>
+    public int Afetados { get; set; }
+    public string? AfetadosTexto { get; set; }
 }
 
 public class AgendaConfiguracaoRequest

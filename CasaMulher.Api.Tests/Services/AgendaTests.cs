@@ -340,11 +340,11 @@ public sealed class AgendaTests : IAsyncLifetime
     [Fact]
     public async Task Unidade_fechada_bloqueia_e_excecao_da_adm_vale_so_para_aquele_compromisso()
     {
-        Assert.Equal(200, Status(await C(Adm).CriarDia(new AgendaDiaEspecialRequest { Data = "2026-11-27", Tipo = "fechada", Titulo = "Dedetização" }, default)));
+        Assert.Equal(200, Status(await C(Adm).CriarDia(new AgendaDiaEspecialRequest { Data = "2026-11-27", Tipo = AgendaTipoDia.Outra, Funcionamento = AgendaFuncionamento.Fechada, Titulo = "Dedetização" }, default)));
 
         var r = await C(Ana).Agendar(new AgendaAgendamentoRequest { AssistidaId = _maria, Tipo = "sessao", Inicio = "2026-11-27T10:00", DuracaoMinutos = 50, Justificativa = "preciso", ExcecaoMotivo = "tentativa" }, default);
         Assert.Equal(409, Status(r));
-        Assert.Contains("Unidade fechada", Corpo(r));
+        Assert.Contains("Casa fechada neste dia (Dedetização)", Corpo(r));
 
         var vistoria = Reuniao("2026-11-27T10:00", "2026-11-27T11:00", Rec.UserId);
         Assert.Equal(409, Status(await C(Adm).CriarCompromisso(vistoria, default)));
@@ -365,6 +365,113 @@ public sealed class AgendaTests : IAsyncLifetime
         var conf = Valor(await C(Ana).Conferir(new AgendaConferirRequest { AssistidaId = _maria, Ocorrencias = [new AgendaOcorrenciaRequest { Inicio = "2026-11-20T10:00", Fim = "2026-11-20T10:50" }] }, default));
         Assert.Contains(conf[0].Conflitos, c => c.Nivel == AgendaService.Aviso && c.Mensagem.Contains("Feriado"));
         await AgendarAsync(Ana, "2026-11-20T10:00");
+    }
+
+    [Fact]
+    public async Task Feriado_com_a_Casa_fechada_continua_identificado_como_feriado()
+    {
+        Assert.Equal(200, Status(await C(Adm).CriarDia(new AgendaDiaEspecialRequest { Data = "2026-11-12", Tipo = AgendaTipoDia.Feriado, Funcionamento = AgendaFuncionamento.Fechada, Titulo = "Feriado municipal" }, default)));
+        var casa = (await Lista(Ana)).Single(i => i.Fonte == "casa");
+        Assert.Equal("Feriado municipal", casa.Titulo);
+        Assert.Equal("k-fec", casa.Cor);
+        Assert.Contains("Casa fechada", casa.Tags);
+        var r = await C(Ana).Agendar(new AgendaAgendamentoRequest { AssistidaId = _maria, Tipo = "sessao", Inicio = "2026-11-12T10:00", DuracaoMinutos = 50, Justificativa = "x" }, default);
+        Assert.Equal(409, Status(r));
+        Assert.True(Corpo(r).Contains("Casa fechada neste dia (Feriado: Feriado municipal)"), Corpo(r));
+        var cfg = Valor(await C(Adm).Configuracao(default));
+        var d = Assert.Single(cfg.Dias);
+        Assert.Equal(AgendaTipoDia.Feriado, d.Tipo);
+        Assert.Equal("Fechada", d.TextoFuncionamento);
+    }
+
+    [Fact]
+    public async Task Horario_especial_so_aceita_dentro_do_intervalo()
+    {
+        Assert.Equal(200, Status(await C(Adm).CriarDia(new AgendaDiaEspecialRequest { Data = "2026-11-13", Tipo = AgendaTipoDia.Feriado, Funcionamento = AgendaFuncionamento.Especial, HorarioInicio = "08:00", HorarioFim = "12:00", Titulo = "Ponto facultativo" }, default)));
+        var conf = Valor(await C(Ana).Conferir(new AgendaConferirRequest { AssistidaId = _maria, Ocorrencias = [new AgendaOcorrenciaRequest { Inicio = "2026-11-13T10:00", Fim = "2026-11-13T10:50" }] }, default));
+        Assert.DoesNotContain(conf[0].Conflitos, c => c.Nivel == AgendaService.Bloqueio);
+        Assert.Contains(conf[0].Conflitos, c => c.Nivel == AgendaService.Aviso && c.Mensagem.Contains("08:00") && c.Mensagem.Contains("12:00"));
+        await AgendarAsync(Ana, "2026-11-13T10:00");
+
+        foreach (var ini in new[] { "2026-11-13T13:00", "2026-11-13T11:30", "2026-11-13T07:30" })
+        {
+            var r = await C(Ana).Agendar(new AgendaAgendamentoRequest { AssistidaId = _maria, Tipo = "sessao", Inicio = ini, DuracaoMinutos = 50, Justificativa = "x" }, default);
+            Assert.Equal(409, Status(r));
+            Assert.Contains("a Casa funciona só das 08:00 às 12:00", Corpo(r));
+        }
+        // dia inteiro também não cabe no horário especial
+        var aus = Reuniao("2026-11-13T00:00", "2026-11-13T00:00");
+        aus.DiaInteiro = true; aus.Ocorrencias = [new AgendaOcorrenciaRequest { Inicio = "2026-11-13" }];
+        Assert.Equal(409, Status(await C(Bruna).CriarCompromisso(aus, default)));
+    }
+
+    [Fact]
+    public async Task Dia_da_Casa_valida_o_pedido_e_so_a_adm_cadastra()
+    {
+        Assert.Equal(403, Status(await C(Ana).CriarDia(new AgendaDiaEspecialRequest { Data = "2026-11-13", Tipo = AgendaTipoDia.Feriado, Titulo = "X" }, default)));
+        Assert.Equal(403, Status(await C(Ana).PreviaDia(new AgendaDiaEspecialRequest { Data = "2026-11-13", Tipo = AgendaTipoDia.Feriado, Titulo = "X" }, default)));
+        Assert.Equal(400, Status(await C(Adm).CriarDia(new AgendaDiaEspecialRequest { Data = "2026-11-13", Tipo = "fechada", Titulo = "X" }, default)));
+        Assert.Equal(400, Status(await C(Adm).CriarDia(new AgendaDiaEspecialRequest { Data = "2026-11-13", Tipo = AgendaTipoDia.Feriado, Funcionamento = AgendaFuncionamento.Especial, Titulo = "X" }, default)));
+        Assert.Equal(400, Status(await C(Adm).CriarDia(new AgendaDiaEspecialRequest { Data = "2026-11-13", Tipo = AgendaTipoDia.Feriado, Funcionamento = AgendaFuncionamento.Especial, HorarioInicio = "12:00", HorarioFim = "08:00", Titulo = "X" }, default)));
+        Assert.Equal(400, Status(await C(Adm).CriarDia(new AgendaDiaEspecialRequest { Data = "2026-11-13", Tipo = AgendaTipoDia.Outra, Funcionamento = AgendaFuncionamento.Normal, Titulo = "X" }, default)));
+        // feriado com funcionamento normal: só identifica a data
+        Assert.Equal(200, Status(await C(Adm).CriarDia(new AgendaDiaEspecialRequest { Data = "2026-11-13", Tipo = AgendaTipoDia.Feriado, Funcionamento = AgendaFuncionamento.Normal, Titulo = "X" }, default)));
+    }
+
+    [Fact]
+    public async Task Fechar_data_com_compromissos_mostra_os_afetados_sem_cancelar_e_avisa_cada_responsavel()
+    {
+        // terça 24/11: sessão da Ana às 10h, atendimento jurídico da Carla às 14h e aula de Informática às 18h
+        var sessao = await AgendarAsync(Ana, "2026-11-24T10:00");
+        var juridico = await AgendarAsync(Jur1, "2026-11-24T14:00", tipo: "atendimento");
+        var fechar = new AgendaDiaEspecialRequest { Data = "2026-11-24", Tipo = AgendaTipoDia.Outra, Funcionamento = AgendaFuncionamento.Fechada, Titulo = "Manutenção elétrica" };
+
+        var previa = Valor(await C(Adm).PreviaDia(fechar, default));
+        Assert.Equal(3, previa.Total);
+        Assert.Equal(1, previa.Atendimentos["Psicologia"]);
+        Assert.Equal(1, previa.Atendimentos["Jurídico"]);
+        Assert.Equal(1, previa.Aulas);
+        var jsonPrevia = Json(previa);
+        Assert.DoesNotContain("Maria", jsonPrevia);
+        Assert.DoesNotContain("Sessão", jsonPrevia);
+
+        var criado = await C(Adm).CriarDia(fechar, default);
+        Assert.Equal(200, Status(criado));
+        Assert.Contains("\"Total\":3", Corpo(criado));
+        Assert.DoesNotContain("Maria", Corpo(criado));
+
+        // nada foi cancelado sozinho
+        Assert.Equal(AgendaSituacao.Agendado, (await _db.AgendaAgendamentos.AsNoTracking().SingleAsync(a => a.Id == Num(sessao))).Situacao);
+        Assert.Equal(AgendaSituacao.Agendado, (await _db.AgendaAgendamentos.AsNoTracking().SingleAsync(a => a.Id == Num(juridico))).Situacao);
+
+        // cada responsável recebe a sua pendência, e só a sua
+        var pAna = Valor(await C(Ana).Pendencias(default)).Single(p => p.Tipo == "foraFuncionamento");
+        Assert.Equal(sessao, pAna.Id);
+        Assert.Contains("Casa fechada neste dia (Manutenção elétrica)", pAna.Texto);
+        Assert.Contains("remarcar", pAna.Acoes);
+        Assert.Contains("cancelarAgendamento", pAna.Acoes);
+        Assert.Single(Valor(await C(Jur1).Pendencias(default)), p => p.Tipo == "foraFuncionamento" && p.Id == juridico);
+        Assert.DoesNotContain(Valor(await C(Bruna).Pendencias(default)), p => p.Tipo == "foraFuncionamento");
+        Assert.Contains(Valor(await C(Prof1).Pendencias(default)), p => p.Tipo == "fechada" && p.Texto.Contains("Informática"));
+        Assert.DoesNotContain(Valor(await C(Prof2).Pendencias(default)), p => p.Tipo == "fechada");
+
+        // a ADM vê quantos faltam tratar, sem nomes
+        var dia = Valor(await C(Adm).Configuracao(default)).Dias.Single();
+        Assert.Equal(3, dia.Afetados);
+        Assert.DoesNotContain("Maria", dia.AfetadosTexto);
+
+        // a ADM muda para horário especial 8h–12h: a sessão das 10h deixa de ser afetada
+        var editar = new AgendaDiaEspecialRequest { Data = "2026-11-24", Tipo = AgendaTipoDia.Outra, Funcionamento = AgendaFuncionamento.Especial, HorarioInicio = "08:00", HorarioFim = "12:00", Titulo = "Manutenção elétrica (tarde)" };
+        Assert.Equal(200, Status(await C(Adm).EditarDia(dia.Id, editar, default)));
+        Assert.DoesNotContain(Valor(await C(Ana).Pendencias(default)), p => p.Tipo == "foraFuncionamento");
+        Assert.Contains(Valor(await C(Jur1).Pendencias(default)), p => p.Tipo == "foraFuncionamento" && p.Texto.Contains("08:00 às 12:00"));
+        Assert.Equal(2, Valor(await C(Adm).Configuracao(default)).Dias.Single().Afetados);
+
+        // voltar ao normal para todos resolve o resto
+        Assert.Equal(200, Status(await C(Adm).Reabrir(dia.Id, new AgendaMotivoRequest { Motivo = "Manutenção adiada" }, default)));
+        Assert.DoesNotContain(Valor(await C(Jur1).Pendencias(default)), p => p.Tipo == "foraFuncionamento");
+        Assert.Equal(0, Valor(await C(Adm).Configuracao(default)).Dias.Single().Afetados);
+        Assert.Contains(_auditoria, a => a.Contains("AGENDA_DIA_EDITADO"));
     }
 
     [Fact]

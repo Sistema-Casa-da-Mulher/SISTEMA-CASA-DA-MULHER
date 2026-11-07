@@ -341,15 +341,24 @@ public partial class AgendaController
                 .Where(c => c.Tipo == AgendaTipoManual.Ausencia && c.SituacaoAusencia == "informada" && c.Situacao == "ativo" && c.InicioUtc > desde).OrderBy(c => c.InicioUtc).ToListAsync(ct))
             .Select(c => $"{ctx.Curto(c.DonoUserId)}: {AgendaService.DiaSemana(c.InicioUtc)} {AgendaService.Dm(c.InicioUtc)} {(c.DiaInteiro ? "dia inteiro" : AgendaService.Hm(c.InicioUtc) + "–" + (c.FimUtc is null ? "" : AgendaService.Hm(c.FimUtc.Value)))} (por {ctx.Curto(c.RegistradoPorUserId)})")
             .ToList();
+        var dias = new List<AgendaDiaEspecialResponse>();
+        foreach (var d in ctx.Dias.Where(d => d.Data >= _agenda.Hoje.AddDays(-30)).OrderBy(d => d.Data))
+        {
+            var af = await _agenda.AfetadosAsync(ctx, d, ct);
+            dias.Add(new AgendaDiaEspecialResponse
+            {
+                Id = d.Id, Data = d.Data.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Tipo = d.Tipo, Funcionamento = d.Funcionamento,
+                HorarioInicio = d.HorarioInicio?.ToString("HH:mm"), HorarioFim = d.HorarioFim?.ToString("HH:mm"),
+                TextoFuncionamento = AgendaService.TextoFuncionamento(d), Titulo = d.Titulo, Nota = d.Nota,
+                Reaberta = d.ReabertaEm is null ? null : $"{d.ReabertaPorIdentificador}: {d.ReabertaMotivo}",
+                Afetados = af.Total, AfetadosTexto = af.Total == 0 ? null : af.Texto
+            });
+        }
         return Ok(new AgendaConfiguracaoResponse
         {
             LimiteCompromissosDia = ctx.Config.LimiteCompromissosDia, LimiteHorasDia = ctx.Config.LimiteHorasDia,
             ExpedienteInicio = ctx.Config.ExpedienteInicio.ToString("HH:mm"), ExpedienteFim = ctx.Config.ExpedienteFim.ToString("HH:mm"),
-            Dias = ctx.Dias.Where(d => d.Data >= _agenda.Hoje.AddDays(-30)).OrderBy(d => d.Data).Select(d => new AgendaDiaEspecialResponse
-            {
-                Id = d.Id, Data = d.Data.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Tipo = d.Tipo, Titulo = d.Titulo, Nota = d.Nota,
-                Reaberta = d.ReabertaEm is null ? null : $"{d.ReabertaPorIdentificador}: {d.ReabertaMotivo}"
-            }).ToList(),
+            Dias = dias,
             Excecoes = excecoes, AusenciasInformadas = ausencias
         });
     }
@@ -377,23 +386,87 @@ public partial class AgendaController
         return Ok(new { aviso = snap.AvisoSnapshot });
     }
 
-    /// <summary>Feriado (aviso), unidade fechada (bloqueia agendamentos) ou evento da Casa.</summary>
+    /// <summary>Lê e valida o pedido: "que data é esta?" (tipo) + "como a Casa funciona neste dia?" (funcionamento).</summary>
+    private string? LerDiaEspecial(AgendaDiaEspecialRequest req, AgendaDiaEspecial d)
+    {
+        if (!LerDia(req.Data, out var dia)) return "Data inválida.";
+        if (!AgendaTipoDia.Todos.Contains(req.Tipo)) return "Escolha que data é esta: feriado, evento ou data comum.";
+        var func = string.IsNullOrWhiteSpace(req.Funcionamento) ? AgendaFuncionamento.Normal : req.Funcionamento;
+        if (!AgendaFuncionamento.Todos.Contains(func)) return "Escolha como a Casa funciona neste dia.";
+        TimeOnly? ini = null, fim = null;
+        if (func == AgendaFuncionamento.Especial)
+        {
+            if (!TimeOnly.TryParseExact(req.HorarioInicio ?? "", "HH:mm", out var hi) || !TimeOnly.TryParseExact(req.HorarioFim ?? "", "HH:mm", out var hf))
+                return "Informe o horário especial (início e fim).";
+            if (hf <= hi) return "No horário especial, o fim precisa ser depois do início.";
+            ini = hi; fim = hf;
+        }
+        var titulo = Limpo(req.Titulo);
+        if (titulo is null) return "Informe a identificação da data (ex.: Proclamação da República, Manutenção elétrica).";
+        if (req.Tipo == AgendaTipoDia.Outra && func == AgendaFuncionamento.Normal) return "Uma data comum com funcionamento normal não precisa ser cadastrada.";
+        d.Data = dia; d.Tipo = req.Tipo; d.Funcionamento = func; d.HorarioInicio = ini; d.HorarioFim = fim; d.Titulo = titulo; d.Nota = Limpo(req.Nota);
+        return null;
+    }
+
+    private static string Descrever(AgendaDiaEspecial d) =>
+        $"{AgendaService.Dm(d.Data)} {d.Titulo} ({(d.Tipo switch { AgendaTipoDia.Feriado => "feriado", AgendaTipoDia.Evento => "evento", _ => "data comum" })}; funcionamento: {AgendaService.TextoFuncionamento(d).ToLowerInvariant()})";
+
+    /// <summary>Prévia antes de salvar: quantos compromissos já marcados ficariam fora do funcionamento (só números).</summary>
+    [HttpPost("dias/previa")]
+    public async Task<ActionResult<AgendaAfetadosResponse>> PreviaDia(AgendaDiaEspecialRequest req, CancellationToken ct)
+    {
+        var v = await _assistidas.ObterUsuarioAsync(User, ct);
+        if (v is null) return Unauthorized();
+        if (v.Perfil != PerfisAcesso.Adm) return Proibido("Só a ADM configura os dias da Casa.");
+        var d = new AgendaDiaEspecial();
+        var erro = LerDiaEspecial(req, d);
+        if (erro is not null) return BadRequest(new { mensagem = erro });
+        var ctx = await _agenda.CarregarContextoAsync(ct);
+        return Ok(await _agenda.AfetadosAsync(ctx, d, ct));
+    }
+
+    /// <summary>Cadastra o dia. Se já houver algo marcado fora do funcionamento, nada é cancelado:
+    /// cada responsável recebe a pendência "fora do funcionamento" e a ADM vê quantos faltam tratar.</summary>
     [HttpPost("dias")]
     public async Task<ActionResult> CriarDia(AgendaDiaEspecialRequest req, CancellationToken ct)
     {
         var v = await _assistidas.ObterUsuarioAsync(User, ct);
         if (v is null) return Unauthorized();
         if (v.Perfil != PerfisAcesso.Adm) return Proibido("Só a ADM configura os dias da Casa.");
-        if (!LerDia(req.Data, out var dia)) return BadRequest(new { mensagem = "Data inválida." });
-        if (req.Tipo is not ("feriado" or "fechada" or "evento")) return BadRequest(new { mensagem = "Tipo inválido." });
-        var titulo = Limpo(req.Titulo);
-        if (titulo is null) return BadRequest(new { mensagem = "Informe o título." });
-        var d = new AgendaDiaEspecial { Data = dia, Tipo = req.Tipo, Titulo = titulo, Nota = Limpo(req.Nota), CriadoPorIdentificador = v.Identificador, CriadoEm = _agenda.AgoraUtc };
+        var d = new AgendaDiaEspecial { CriadoPorIdentificador = v.Identificador, CriadoEm = _agenda.AgoraUtc };
+        var erro = LerDiaEspecial(req, d);
+        if (erro is not null) return BadRequest(new { mensagem = erro });
         _db.AgendaDiasEspeciais.Add(d);
         await _db.SaveChangesAsync(ct);
-        await _auditoria.RegistrarAsync("AGENDA_DIA_ESPECIAL", "AgendaDiaEspecial", d.Id.ToString(CultureInfo.InvariantCulture), $"{v.Identificador} marcou {req.Tipo} em {AgendaService.Dm(dia)}: {titulo}.", v.Identificador);
+        var ctx = await _agenda.CarregarContextoAsync(ct);
+        var afetados = await _agenda.AfetadosAsync(ctx, d, ct);
+        await _auditoria.RegistrarAsync("AGENDA_DIA_ESPECIAL", "AgendaDiaEspecial", d.Id.ToString(CultureInfo.InvariantCulture),
+            $"{v.Identificador} cadastrou {Descrever(d)}. Compromissos fora do funcionamento: {afetados.Total}.", v.Identificador);
         var snap = await _snapshot.PersistAsync("agenda_dia", CancellationToken.None);
-        return Ok(new { id = d.Id, aviso = snap.AvisoSnapshot });
+        return Ok(new { id = d.Id, afetados, aviso = snap.AvisoSnapshot });
+    }
+
+    [HttpPut("dias/{id:int}")]
+    public async Task<ActionResult> EditarDia(int id, AgendaDiaEspecialRequest req, CancellationToken ct)
+    {
+        var v = await _assistidas.ObterUsuarioAsync(User, ct);
+        if (v is null) return Unauthorized();
+        if (v.Perfil != PerfisAcesso.Adm) return Proibido("Só a ADM configura os dias da Casa.");
+        var d = await _db.AgendaDiasEspeciais.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (d is null) return NaoEncontrado();
+        var antes = Descrever(d);
+        var funcAntes = (d.Funcionamento, d.HorarioInicio, d.HorarioFim);
+        var erro = LerDiaEspecial(req, d);
+        if (erro is not null) return BadRequest(new { mensagem = erro });
+        // mudou o funcionamento: a reabertura antiga não vale mais para a nova regra
+        if (funcAntes != (d.Funcionamento, d.HorarioInicio, d.HorarioFim)) { d.ReabertaEm = null; d.ReabertaMotivo = null; d.ReabertaPorIdentificador = null; }
+        await _db.SaveChangesAsync(ct);
+        var ctx = await _agenda.CarregarContextoAsync(ct);
+        var afetados = await _agenda.AfetadosAsync(ctx, d, ct);
+        await _auditoria.RegistrarAsync("AGENDA_DIA_EDITADO", "AgendaDiaEspecial", id.ToString(CultureInfo.InvariantCulture),
+            $"{v.Identificador} alterou {antes} para {Descrever(d)}. Compromissos fora do funcionamento: {afetados.Total}.", v.Identificador);
+        var snap = await _snapshot.PersistAsync("agenda_dia", CancellationToken.None);
+        return Ok(new { id = d.Id, afetados, aviso = snap.AvisoSnapshot });
     }
 
     [HttpDelete("dias/{id:int}")]
@@ -406,7 +479,7 @@ public partial class AgendaController
         if (d is null) return NaoEncontrado();
         _db.AgendaDiasEspeciais.Remove(d);
         await _db.SaveChangesAsync(ct);
-        await _auditoria.RegistrarAsync("AGENDA_DIA_REMOVIDO", "AgendaDiaEspecial", id.ToString(CultureInfo.InvariantCulture), $"{v.Identificador} removeu {d.Tipo} de {AgendaService.Dm(d.Data)} ({d.Titulo}).", v.Identificador);
+        await _auditoria.RegistrarAsync("AGENDA_DIA_REMOVIDO", "AgendaDiaEspecial", id.ToString(CultureInfo.InvariantCulture), $"{v.Identificador} removeu {Descrever(d)}.", v.Identificador);
         var snap = await _snapshot.PersistAsync("agenda_dia", CancellationToken.None);
         return Ok(new { aviso = snap.AvisoSnapshot });
     }
@@ -418,7 +491,7 @@ public partial class AgendaController
         var v = await _assistidas.ObterUsuarioAsync(User, ct);
         if (v is null) return Unauthorized();
         if (v.Perfil != PerfisAcesso.Adm) return Proibido("Só a ADM reabre a unidade.");
-        var d = await _db.AgendaDiasEspeciais.SingleOrDefaultAsync(x => x.Id == id && x.Tipo == "fechada", ct);
+        var d = await _db.AgendaDiasEspeciais.SingleOrDefaultAsync(x => x.Id == id && x.Funcionamento != AgendaFuncionamento.Normal, ct);
         if (d is null) return NaoEncontrado();
         if (d.ReabertaEm is not null) return BadRequest(new { mensagem = "Já está reaberta." });
         var motivo = Limpo(req.Motivo);
@@ -427,7 +500,7 @@ public partial class AgendaController
         d.ReabertaMotivo = motivo;
         d.ReabertaPorIdentificador = v.Identificador;
         await _db.SaveChangesAsync(ct);
-        await _auditoria.RegistrarAsync("AGENDA_UNIDADE_REABERTA", "AgendaDiaEspecial", id.ToString(CultureInfo.InvariantCulture), $"{v.Identificador} reabriu a unidade para todos em {AgendaService.Dm(d.Data)}: {motivo}.", v.Identificador);
+        await _auditoria.RegistrarAsync("AGENDA_UNIDADE_REABERTA", "AgendaDiaEspecial", id.ToString(CultureInfo.InvariantCulture), $"{v.Identificador} voltou ao funcionamento normal para todos em {Descrever(d)}: {motivo}.", v.Identificador);
         var snap = await _snapshot.PersistAsync("agenda_dia", CancellationToken.None);
         return Ok(new { aviso = snap.AvisoSnapshot });
     }

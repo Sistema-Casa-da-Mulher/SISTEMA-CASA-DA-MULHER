@@ -1019,6 +1019,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.ToTable("AgendaDiasEspeciais");
             entity.HasIndex(d => d.Data);
             entity.Property(d => d.Tipo).IsRequired().HasMaxLength(20);
+            entity.Property(d => d.Funcionamento).IsRequired().HasMaxLength(20).HasDefaultValue(AgendaFuncionamento.Normal);
             entity.Property(d => d.Titulo).IsRequired().HasMaxLength(160);
             entity.Property(d => d.Nota).HasMaxLength(300);
             entity.Property(d => d.ReabertaMotivo).HasMaxLength(300);

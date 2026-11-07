@@ -16,7 +16,8 @@ public sealed partial class AgendaService
     {
         if (nivel is NivelOcupado or NivelContagem or NivelSemAcesso) return "k-neu";
         if (nivel == NivelRecepcao) return "k-equipe";
-        if (it.Fonte == "casa") return it.Tipo == "fechada" ? "k-fec" : it.Tipo == "feriado" ? "k-fer" : "k-man";
+        if (it.Fonte == "casa")
+            return it.Dia is { Funcionamento: AgendaFuncionamento.Fechada, ReabertaEm: null } ? "k-fec" : it.Tipo == AgendaTipoDia.Feriado ? "k-fer" : "k-man";
         if (it.Fonte == "aula") return "k-aula";
         if (it.Tipo == AgendaTipoManual.Ausencia) return "k-aus";
         if (it.Tipo == AgendaTipoManual.Comunicacao) return "k-aula";
@@ -142,6 +143,8 @@ public sealed partial class AgendaService
         }
         if (it.Fonte == "casa" && it.Dia is { } d)
         {
+            partes.Add(TextoFuncionamento(d));
+            if (d.Funcionamento != AgendaFuncionamento.Normal && d.ReabertaEm is null) r.Tags.Add(d.Funcionamento == AgendaFuncionamento.Fechada ? "Casa fechada" : "horário especial");
             if (d.Nota is not null) partes.Add(d.Nota);
             if (d.ReabertaEm is not null) r.Tags.Add("reaberta");
         }
@@ -187,7 +190,9 @@ public sealed partial class AgendaService
         if (it.Fonte == "casa")
         {
             linhas.Add(["O quê", it.Titulo]);
-            if (it.Dia!.Nota is not null) linhas.Add(["Observação", it.Dia.Nota]);
+            linhas.Add(["Tipo de data", it.Dia!.Tipo switch { AgendaTipoDia.Feriado => "Feriado", AgendaTipoDia.Evento => "Evento da Casa", _ => "Data comum" }]);
+            linhas.Add(["Funcionamento da Casa", TextoFuncionamento(it.Dia)]);
+            if (it.Dia.Nota is not null) linhas.Add(["Observação", it.Dia.Nota]);
             if (it.Dia.ReabertaEm is not null) linhas.Add(["Reaberta", $"por {it.Dia.ReabertaPorIdentificador}: {it.Dia.ReabertaMotivo}"]);
             return resp;
         }
@@ -286,6 +291,69 @@ public sealed partial class AgendaService
         return resp;
     }
 
+    public static string TextoFuncionamento(AgendaDiaEspecial d)
+    {
+        if (d.ReabertaEm is not null) return "Normal (reaberta para todos)";
+        return d.Funcionamento switch
+        {
+            AgendaFuncionamento.Fechada => "Fechada",
+            AgendaFuncionamento.Especial => $"Horário especial, das {d.HorarioInicio:HH\\:mm} às {d.HorarioFim:HH\\:mm}",
+            _ => "Normal"
+        };
+    }
+
+    /// <summary>O item cai fora do funcionamento da Casa no dia dele (e não tem exceção autorizada)?</summary>
+    public static string? ForaDoFuncionamentoDoItem(Contexto ctx, Item it)
+    {
+        if (!it.Ocupa || it.Fonte is "casa" or "marco") return null;
+        if (it.Agendamento?.ExcecaoMotivo is not null || it.Compromisso?.ExcecaoMotivo is not null) return null;
+        var dia = DiaLocal(it.IniUtc);
+        foreach (var d in ctx.Dias.Where(d => d.Data == dia))
+        {
+            var j = it.Janela;
+            var fora = ForaDoFuncionamento(d, j.Ini, j.Fim, it.DiaInteiro || it.FimUtc is null);
+            if (fora is not null) return fora;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Quantos compromissos já marcados ficam fora do funcionamento se o dia for <paramref name="dia"/>.
+    /// Só números por área (sigilo): a ADM não vê nomes nem assuntos. Nada é cancelado aqui.
+    /// </summary>
+    public async Task<AgendaAfetadosResponse> AfetadosAsync(Contexto ctx, AgendaDiaEspecial dia, CancellationToken ct)
+    {
+        var resp = new AgendaAfetadosResponse();
+        if (dia.Funcionamento == AgendaFuncionamento.Normal || dia.ReabertaEm is not null || dia.Data < Hoje) return resp;
+        var agora = AgoraUtc;
+        var itens = await ItensAsync(ctx, InicioDiaUtc(dia.Data), InicioDiaUtc(dia.Data.AddDays(1)), ct);
+        foreach (var it in itens.Where(i => i.Ocupa && i.IniUtc > agora && DiaLocal(i.IniUtc) == dia.Data))
+        {
+            if (it.Fonte is "casa" or "marco") continue;
+            if (it.Fonte == "manual" && it.Tipo == AgendaTipoManual.Ausencia) continue;
+            if (it.Fonte == "aula" && it.AulaCancelada is not null) continue;
+            if (it.Agendamento?.ExcecaoMotivo is not null || it.Compromisso?.ExcecaoMotivo is not null) continue;
+            var j = it.Janela;
+            if (ForaDoFuncionamento(dia, j.Ini, j.Fim, it.DiaInteiro || it.FimUtc is null) is null) continue;
+            switch (it.Fonte)
+            {
+                case "agendamento":
+                    var rotulo = it.Area switch { AgendaArea.Juridico => "Jurídico", AgendaArea.Psicologia => "Psicologia", AgendaArea.ServicoSocial => "Serviço Social", _ => "Outros" };
+                    resp.Atendimentos[rotulo] = resp.Atendimentos.GetValueOrDefault(rotulo) + 1;
+                    break;
+                case "aula": resp.Aulas++; break;
+                default: resp.Compromissos++; break;
+            }
+        }
+        resp.Total = resp.Atendimentos.Values.Sum() + resp.Aulas + resp.Compromissos;
+        var partes = resp.Atendimentos.OrderBy(k => k.Key).Select(k => $"{k.Value} atendimento{(k.Value == 1 ? "" : "s")} ({k.Key})").ToList();
+        if (resp.Aulas > 0) partes.Add($"{resp.Aulas} aula{(resp.Aulas == 1 ? "" : "s")}");
+        if (resp.Compromissos > 0) partes.Add($"{resp.Compromissos} compromisso{(resp.Compromissos == 1 ? "" : "s")} da equipe");
+        resp.Texto = resp.Total == 0 ? "Nenhum compromisso marcado fica fora do funcionamento."
+            : $"Ficam fora do funcionamento: {string.Join(", ", partes)}. Nada será cancelado sozinho: cada responsável recebe uma pendência para remarcar ou cancelar.";
+        return resp;
+    }
+
     private static string Maiuscula(string s) => s.Length == 0 ? s : char.ToUpper(s[0], PtBr) + s[1..];
 
     private static string? Referencia(Contexto ctx, string area, int assistidaId) => area switch
@@ -318,6 +386,29 @@ public sealed partial class AgendaService
                 lista.Insert(0, new AgendaPendenciaResponse { Tipo = "chegada", Id = "ag:" + a.Id, Texto = $"{ctx.Identificacao(a.AssistidaId)} chegou às {(a.ChegouEm is null ? "-" : Hm(a.ChegouEm.Value))} para {titulo.ToLower(PtBr)} das {Hm(a.InicioUtc)}", Acoes = ["recebida"] });
             if (a.FimUtc < agora)
                 lista.Add(new AgendaPendenciaResponse { Tipo = "resultado", Id = "ag:" + a.Id, Texto = $"Resultado pendente de registro: {titulo} de {ctx.Identificacao(a.AssistidaId)} ({DiaSemana(a.InicioUtc)} {Dm(a.InicioUtc)} {Hm(a.InicioUtc)})", Nota = "Horário passado sem registro não significa falta.", Acoes = ["resultado"] });
+        }
+
+        // compromissos meus que ficaram fora do funcionamento da Casa (dia fechado ou horário especial)
+        if (ctx.Dias.Any(d => d.Data >= hoje && d.Funcionamento != AgendaFuncionamento.Normal && d.ReabertaEm == null))
+        {
+            var ultimo = ctx.Dias.Max(d => d.Data);
+            var futuros = await ItensAsync(ctx, agora, InicioDiaUtc(ultimo.AddDays(1)), ct);
+            foreach (var it in futuros.Where(i => i.IniUtc > agora && i.Fonte is "agendamento" or "manual").OrderBy(i => i.IniUtc))
+            {
+                var ehMeu = it.Fonte == "agendamento" ? it.DonoId == v.UserId : (it.DonoId == v.UserId || it.Compromisso!.RegistradoPorUserId == v.UserId);
+                if (!ehMeu || it.Tipo == AgendaTipoManual.Ausencia || (it.Agendamento is not null && it.Agendamento.Situacao != AgendaSituacao.Agendado)) continue;
+                var fora = ForaDoFuncionamentoDoItem(ctx, it);
+                if (fora is null) continue;
+                var semAcesso = it.Area is not null && it.AssistidaId is not null && !Pode(it.Area, it.AssistidaId);
+                var oQue = semAcesso ? "Compromisso de um caso que você não acessa mais" : it.Fonte == "agendamento" ? $"{it.Titulo} de {ctx.Identificacao(it.AssistidaId!.Value)}" : it.Titulo;
+                lista.Insert(0, new AgendaPendenciaResponse
+                {
+                    Tipo = "foraFuncionamento", Id = it.Id,
+                    Texto = $"{oQue}, {DiaSemana(it.IniUtc)} {Dm(it.IniUtc)} {Hm(it.IniUtc)}, ficou fora do funcionamento da Casa. {fora}",
+                    Nota = "Nada foi cancelado sozinho. Remarque, cancele ou peça à ADM uma exceção para este compromisso.",
+                    Acoes = semAcesso ? [] : it.Fonte == "agendamento" ? ["remarcar", "cancelarAgendamento"] : [it.Compromisso!.SerieId is null ? "cancelarManual" : "cancelarSerie"]
+                });
+            }
         }
 
         // ausências informadas por colega (a própria pessoa ou a ADM confirma)
@@ -379,8 +470,12 @@ public sealed partial class AgendaService
             var aulas = Aulas(ctx, de, hoje.AddDays(30)).Where(a => meusCursos.Contains(a.CursoId!.Value) && a.AulaCancelada is null).ToList();
             foreach (var a in aulas.Where(a => a.FimUtc < agora && !a.AulaComChamada))
                 lista.Add(new AgendaPendenciaResponse { Tipo = "chamada", Id = a.Id, Texto = $"Chamada pendente: {ctx.Cursos[a.CursoId!.Value].Nome}, {DiaSemana(a.IniUtc)} {Dm(a.IniUtc)}", Acoes = ["chamada"] });
-            foreach (var a in aulas.Where(a => a.IniUtc > agora && ctx.Dias.Any(d => d.Tipo == "fechada" && d.ReabertaEm == null && d.Data == a.AulaData)))
-                lista.Add(new AgendaPendenciaResponse { Tipo = "fechada", Id = a.Id, Texto = $"Aula em dia de unidade fechada ({Dm(a.IniUtc)}): cancelar ou remarcar {ctx.Cursos[a.CursoId!.Value].Nome}", Acoes = ["cancelarAula"] });
+            foreach (var a in aulas.Where(a => a.IniUtc > agora))
+            {
+                var fora = ForaDoFuncionamentoDoItem(ctx, a);
+                if (fora is not null)
+                    lista.Add(new AgendaPendenciaResponse { Tipo = "fechada", Id = a.Id, Texto = $"Aula de {ctx.Cursos[a.CursoId!.Value].Nome} em {DiaSemana(a.IniUtc)} {Dm(a.IniUtc)} {Hm(a.IniUtc)} ficou fora do funcionamento da Casa. {fora}", Nota = "Nada foi cancelado sozinho: cancele esta aula ou combine outro horário com a ADM.", Acoes = ["cancelarAula"] });
+            }
         }
 
         // Jurídico: encaminhamentos recebidos sem agendamento

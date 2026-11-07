@@ -322,6 +322,19 @@ namespace CasaMulher.Api.Migrations
                     b.Property<DateOnly>("Data")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Funcionamento")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("normal");
+
+                    b.Property<TimeOnly?>("HorarioFim")
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeOnly?>("HorarioInicio")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Nota")
                         .HasMaxLength(300)
                         .HasColumnType("TEXT");

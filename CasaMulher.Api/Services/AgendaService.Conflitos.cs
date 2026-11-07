@@ -27,6 +27,26 @@ public sealed partial class AgendaService
     public const string Confirmar = "confirmar";
     public const string Aviso = "aviso";
 
+    /// <summary>
+    /// O horário cai fora do funcionamento da Casa neste dia? Devolve a mensagem (ou null).
+    /// Fechada: o dia todo. Horário especial: fora do intervalo. "Reabrir para todos" volta ao normal.
+    /// </summary>
+    public static string? ForaDoFuncionamento(AgendaDiaEspecial d, DateTime iniUtc, DateTime? fimUtc, bool diaInteiro)
+    {
+        if (d.ReabertaEm is not null) return null;
+        var nome = d.Tipo == AgendaTipoDia.Feriado ? "Feriado: " + d.Titulo : d.Titulo;
+        if (d.Funcionamento == AgendaFuncionamento.Fechada) return $"Casa fechada neste dia ({nome}).";
+        if (d.Funcionamento != AgendaFuncionamento.Especial || d.HorarioInicio is null || d.HorarioFim is null) return null;
+        var faixa = $"das {d.HorarioInicio:HH\\:mm} às {d.HorarioFim:HH\\:mm}";
+        if (diaInteiro) return $"Horário especial neste dia ({nome}): a Casa funciona só {faixa}.";
+        var ini = TimeOnly.FromDateTime(ParaLocal(iniUtc));
+        var fimLocal = ParaLocal(fimUtc ?? iniUtc);
+        var fim = TimeOnly.FromDateTime(fimLocal);
+        var outroDia = fimLocal.Date > ParaLocal(iniUtc).Date;
+        if (ini < d.HorarioInicio || fim > d.HorarioFim || outroDia) return $"Horário especial neste dia ({nome}): a Casa funciona só {faixa}.";
+        return null;
+    }
+
     private static bool Sobrepoe((DateTime Ini, DateTime Fim) a, (DateTime Ini, DateTime Fim) b) => a.Ini < b.Fim && b.Ini < a.Fim;
 
     private static string H(DateTime utc) => Hm(utc);
@@ -53,14 +73,19 @@ public sealed partial class AgendaService
 
         foreach (var d in ctx.Dias.Where(d => d.Data == diaLocal))
         {
-            if (d.Tipo == "fechada" && d.ReabertaEm is null)
+            var fora = ForaDoFuncionamento(d, c.IniUtc, c.FimUtc, c.DiaInteiro);
+            if (fora is not null)
             {
-                if (c.ComExcecao) Add(Aviso, $"Unidade fechada: {d.Titulo}. Exceção autorizada só para este compromisso.");
-                else Add(Bloqueio, $"Unidade fechada: {d.Titulo}. Só a ADM pode autorizar uma exceção, ligada a este compromisso.", null, true);
+                if (c.ComExcecao) Add(Aviso, $"{fora} Exceção autorizada só para este compromisso.");
+                else Add(Bloqueio, $"{fora} Só a ADM pode autorizar uma exceção, ligada a este compromisso.", null, true);
             }
-            else if (d.Tipo == "feriado")
+            else if (d.Funcionamento == AgendaFuncionamento.Especial && d.ReabertaEm is null && d.HorarioInicio is not null)
             {
-                Add(Aviso, $"Feriado: {d.Titulo}.{(string.IsNullOrWhiteSpace(d.Nota) ? "" : " " + d.Nota)}");
+                Add(Aviso, $"Horário especial da Casa neste dia ({d.Titulo}): das {d.HorarioInicio:HH\\:mm} às {d.HorarioFim:HH\\:mm}.");
+            }
+            if (d.Tipo == AgendaTipoDia.Feriado && fora is null)
+            {
+                Add(Aviso, $"Feriado: {d.Titulo}. A Casa funciona{(d.Funcionamento == AgendaFuncionamento.Especial ? " em horário especial" : " normalmente")}.{(string.IsNullOrWhiteSpace(d.Nota) ? "" : " " + d.Nota)}");
             }
         }
         if (c.IniUtc < AgoraUtc && !c.DiaInteiro) Add(Aviso, "Esse horário já passou.");

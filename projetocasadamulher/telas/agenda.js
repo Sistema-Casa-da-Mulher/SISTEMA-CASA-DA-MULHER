@@ -16,7 +16,7 @@
     const SEM = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
     const SEM_LONGO = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
     const FILTROS = { meus: "Meus compromissos", area: "Da minha área", equipe: "Avisos da equipe", compartilhados: "Compartilhados comigo", casa: "Feriados e dias da Casa", turmas: "Minhas turmas", outrasTurmas: "Aulas de outras turmas", esperadas: "Esperadas na unidade", contagem: "Atendimentos técnicos (só número)" };
-    const LEGENDA = [["k-psi", "Psicologia"], ["k-jur", "Jurídico"], ["k-soc", "Serviço Social"], ["k-aula", "Aulas e comunicações"], ["k-man", "Compromissos e lembretes"], ["k-aus", "Ausências (tracejado = informada)"], ["k-equipe", "Esperada na unidade (Recepção)"], ["k-neu", "Indisponível / sem acesso / só número"], ["k-fer", "Feriado"], ["k-fec", "Unidade fechada"]];
+    const LEGENDA = [["k-psi", "Psicologia"], ["k-jur", "Jurídico"], ["k-soc", "Serviço Social"], ["k-aula", "Aulas e comunicações"], ["k-man", "Compromissos e lembretes"], ["k-aus", "Ausências (tracejado = informada)"], ["k-equipe", "Esperada na unidade (Recepção)"], ["k-neu", "Indisponível / sem acesso / só número"], ["k-fer", "Feriado"], ["k-fec", "Casa fechada"]];
 
     // ---------------- datas (horário de Brasília, sem fuso: a API manda o "relógio de parede") ----------------
     const pad = n => String(n).padStart(2, "0");
@@ -202,7 +202,7 @@
     }
     function pendHtml(p) {
         const b = (acao, txt) => `<button type="button" class="soft-btn soft-btn-secondary ag-btn-sm" data-pend="${acao}" data-id="${esc(p.id)}">${txt}</button>`;
-        const rot = { recebida: "Marcar como recebida", resultado: "Registrar resultado", reavaliar: "Registrar reavaliação", ausOk: "Confirmar", ausNao: "Não procede", chamada: "Fazer chamada", cancelarAula: "Cancelar esta aula", agendar: "Agendar", assumir: "Assumir na minha agenda", remarcar: "Remarcar" };
+        const rot = { recebida: "Marcar como recebida", resultado: "Registrar resultado", reavaliar: "Registrar reavaliação", ausOk: "Confirmar", ausNao: "Não procede", chamada: "Fazer chamada", cancelarAula: "Cancelar esta aula", agendar: "Agendar", assumir: "Assumir na minha agenda", remarcar: "Remarcar", cancelarAgendamento: "Cancelar agendamento", cancelarManual: "Cancelar compromisso", cancelarSerie: "Cancelar…" };
         let acoes = (p.acoes || []).map(a => b(a, rot[a] || a)).join("");
         if (p.tipo === "reavaliacao") acoes += b("verReav", "Ver registros");
         return `<div class="ag-pend">${esc(p.texto)}${p.nota ? `<div class="nota">${esc(p.nota)}</div>` : ""}${acoes ? `<div class="acoes">${acoes}</div>` : ""}</div>`;
@@ -260,10 +260,10 @@
         let cel = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"].map(s => `<div class="sem">${s}</div>`).join("");
         for (let i = 0; i < 42; i++) {
             const d = somaDias(ini, i), its = doDia(vis, d);
-            const casa = dados.itens.find(x => x.fonte === "casa" && mesmoDia(x.ini, d) && (x.tipo === "fechada" || x.tipo === "feriado"));
+            const casa = dados.itens.find(x => x.fonte === "casa" && mesmoDia(x.ini, d) && (x.cor === "k-fec" || x.cor === "k-fer"));
             const cores = []; its.forEach(x => { if (!cores.includes(x.cor)) cores.push(x.cor); });
             const pts = cores.slice(0, 3).map(k => `<i class="pt ${k}"></i>`).join("") + (its.length > 3 ? `<span class="mais">+${its.length - 3}</span>` : "");
-            cel += `<button type="button" class="ag-mini-dia ${d.getMonth() !== ref.getMonth() ? "fora" : ""} ${mesmoDia(d, S.hoje) ? "hoje" : ""} ${casa ? (casa.tipo === "fechada" ? "fec" : "fer") : ""}" data-dia="${ymd(d)}" tabindex="${mesmoDia(d, S.hoje) ? 0 : -1}" aria-label="${SEM_LONGO[d.getDay()]} ${dm(d)}: ${its.length} item(ns)">${d.getDate()}<span class="pts">${pts}</span></button>`;
+            cel += `<button type="button" class="ag-mini-dia ${d.getMonth() !== ref.getMonth() ? "fora" : ""} ${mesmoDia(d, S.hoje) ? "hoje" : ""} ${casa ? (casa.cor === "k-fec" ? "fec" : casa.cor === "k-fer" ? "fer" : "") : ""}" data-dia="${ymd(d)}" tabindex="${mesmoDia(d, S.hoje) ? 0 : -1}" aria-label="${SEM_LONGO[d.getDay()]} ${dm(d)}: ${its.length} item(ns)">${d.getDate()}<span class="pts">${pts}</span></button>`;
         }
         mini.innerHTML = `<div class="ag-mini-top"><button type="button" data-mes="-1" aria-label="Mês anterior">‹</button><span>${MESES[ref.getMonth()]} ${ref.getFullYear()}</span><button type="button" data-mes="1" aria-label="Próximo mês">›</button></div>
             <div class="ag-mini-grade">${cel}</div><div class="ag-mini-dica" id="agMiniDica" aria-live="polite">Passe o mouse ou use as setas num dia para ver o que tem nele.</div>
@@ -432,7 +432,7 @@
     }
     const foraExp = () => { const i = +(S.me.expedienteInicio || "08:00").split(":")[0], f = +(S.me.expedienteFim || "17:00").split(":")[0]; return `<div class="fora" style="top:0;height:${(i - H0) * PX}px"></div><div class="fora" style="top:${(f - H0) * PX}px;height:${(H1 - f) * PX}px"></div>`; };
     const linhaAgora = d => mesmoDia(d, S.hoje) ? `<div class="ag-agora" style="top:${topo(S.agora)}px"></div>` : "";
-    const fechadaNoDia = (dados, d) => dados.itens.some(x => x.fonte === "casa" && x.tipo === "fechada" && mesmoDia(x.ini, d) && !(x.tags || []).includes("reaberta"));
+    const fechadaNoDia = (dados, d) => dados.itens.some(x => x.fonte === "casa" && x.cor === "k-fec" && mesmoDia(x.ini, d));
     function gradeHtml(ctx) {
         const C = S.cal, E = C.escolha, dados = ctx.dados;
         let colunas;
@@ -489,7 +489,7 @@
             const casa = dados.itens.find(x => x.fonte === "casa" && mesmoDia(x.ini, d) && x.tipo !== "evento");
             let extra = "";
             if (S.me.perfil === "adm" && S.cal.filtros.has("contagem")) { const k = dados.contagens[ymd(d)]; const n = k ? k.juridico + k.psicologia + k.servicoSocial : 0; if (n) extra = `<span class="ag-chip k-neu">${n} atend. técnicos</span>`; }
-            h += `<div class="d ${d.getMonth() !== r.getMonth() ? "fora" : ""} ${mesmoDia(d, S.hoje) ? "hoje" : ""} ${casa ? (casa.tipo === "fechada" ? "fec" : "fer") : ""}"><span class="n" data-irdia="${ymd(d)}" role="button" tabindex="0">${d.getDate()}</span>${extra}${xs.slice(0, 4).map(chipHtml).join("")}${xs.length > 4 ? `<span class="ag-chip" data-irdia="${ymd(d)}" style="--bg:#fff;--cor:#8F7181">+${xs.length - 4} mais</span>` : ""}</div>`;
+            h += `<div class="d ${d.getMonth() !== r.getMonth() ? "fora" : ""} ${mesmoDia(d, S.hoje) ? "hoje" : ""} ${casa ? (casa.cor === "k-fec" ? "fec" : casa.cor === "k-fer" ? "fer" : "") : ""}"><span class="n" data-irdia="${ymd(d)}" role="button" tabindex="0">${d.getDate()}</span>${extra}${xs.slice(0, 4).map(chipHtml).join("")}${xs.length > 4 ? `<span class="ag-chip" data-irdia="${ymd(d)}" style="--bg:#fff;--cor:#8F7181">+${xs.length - 4} mais</span>` : ""}</div>`;
         }
         return `<div class="ag-mes">${h}</div>`;
     }
@@ -597,6 +597,7 @@
         const n = numero(id);
         if (acao === "recebida" || acao === "resultado" || acao === "ausOk" || acao === "ausNao") return acaoItem(acao, { id });
         if (acao === "cancelarAula") return abrirCancelarAula(id);
+        if (acao === "cancelarAgendamento" || acao === "cancelarManual" || acao === "cancelarSerie") return acaoItem(acao, { id });
         if (acao === "chamada") { window.location.href = "professor.html"; return; }
         if (acao === "agendar") return abrirAgendamento({ assistidaId: n });
         if (acao === "assumir") return assumir(n, null);
@@ -655,7 +656,7 @@
         const ctrl = (o, i) => {
             let h = "";
             if (tem(o, "bloqueio")) {
-                if (adm && o.conflitos.some(c => c.unidadeFechada)) h += `<label class="linha-check"><input type="checkbox" data-exc="${i}"> Autorizar exceção só para este compromisso${serie ? " nesta data" : ""}</label><input type="text" class="soft-input" data-excm="${i}" maxlength="300" placeholder="Motivo da exceção (obrigatório)"><div class="ajuda">A unidade continua fechada para as demais pessoas. Para reabrir para todos, use Configuração da agenda.</div>`;
+                if (adm && o.conflitos.some(c => c.unidadeFechada)) h += `<label class="linha-check"><input type="checkbox" data-exc="${i}"> Autorizar exceção só para este compromisso${serie ? " nesta data" : ""}</label><input type="text" class="soft-input" data-excm="${i}" maxlength="300" placeholder="Motivo da exceção (obrigatório)"><div class="ajuda">Para as demais pessoas, o dia continua com o funcionamento definido. Para voltar ao normal para todos, use Configuração da agenda.</div>`;
                 else h += `<p class="ag-nota" style="margin:4px 0">${serie ? "Esta data não será criada." : "Escolha outro dia."} Só a ADM pode autorizar uma exceção, e ela vale só para o compromisso autorizado.</p>`;
             }
             if (tem(o, "confirmar")) h += `<input type="text" class="soft-input" data-just="${i}" maxlength="300" placeholder="Justificativa curta ${serie ? "para esta data" : "para confirmar"} (obrigatória)">`;
@@ -900,7 +901,12 @@
         const c = r.corpo;
         const cr = await CasaMulherAuth.apiFetch("/api/cursos").then(x => x.ok ? x.json() : []).catch(() => []);
         const cursos = (cr || []).filter(x => x.ativo);
-        const tipoTxt = { feriado: "Feriado (aviso)", fechada: "Unidade fechada (bloqueia)", evento: "Evento da Casa" };
+        const tipoTxt = { feriado: "Feriado", evento: "Evento", outra: "Data comum" };
+        const linhaDia = d => `<div class="ag-dia-casa">${dm(lerData(d.data))} · <b>${esc(d.titulo)}</b> · ${esc(tipoTxt[d.tipo] || d.tipo)} · Casa: ${esc(d.textoFuncionamento)}`
+            + (d.afetados ? ` <span class="ag-tag" style="--bg:#FDF0F2;--cor:#B4234A">${d.afetados} a tratar</span>` : "")
+            + (d.funcionamento !== "normal" && !d.reaberta ? ` <button type="button" class="soft-btn soft-btn-warning ag-btn-sm" data-reabrir="${d.id}">Voltar ao normal para todos…</button>` : "")
+            + ` <button type="button" class="soft-btn soft-btn-secondary ag-btn-sm" data-editar="${d.id}">Editar</button> <button type="button" class="soft-btn soft-btn-secondary ag-btn-sm" data-remover="${d.id}">Remover</button>`
+            + (d.afetadosTexto ? `<div class="ag-nota">${esc(d.afetadosTexto)}</div>` : "") + `</div>`;
         const { m, fechar } = modal(`<h3>Configuração da agenda<button type="button" data-fechar aria-label="Fechar">×</button></h3>
             <form class="ag-form" id="cfF">
                 <div><label for="cfLc">Aviso a partir de quantos compromissos no dia</label><input id="cfLc" type="number" min="1" max="30" class="soft-input" value="${c.limiteCompromissosDia}"></div>
@@ -910,9 +916,19 @@
                 <div class="full ag-acoes" style="justify-content:flex-start"><button type="button" class="soft-btn soft-btn-primary ag-btn-sm" id="cfSalvar">Salvar limites e expediente</button></div>
             </form>
             <dl class="ag-det">
-                <dt>Dias da Casa</dt><dd>${c.dias.length ? c.dias.map(d => `${dm(lerData(d.data))} · ${esc(tipoTxt[d.tipo] || d.tipo)} · ${esc(d.titulo)}${d.reaberta ? ` <span class="ag-tag" style="--bg:#E1F3EC;--cor:#24805F">reaberta para todos</span>` : d.tipo === "fechada" ? ` <button type="button" class="soft-btn soft-btn-warning ag-btn-sm" data-reabrir="${d.id}">Reabrir para todos…</button>` : ""} <button type="button" class="soft-btn soft-btn-secondary ag-btn-sm" data-remover="${d.id}">Remover</button>`).join("<br>") : "Nenhum."}
-                    <span class="ag-nota" style="display:block">Unidade fechada bloqueia agendamentos. Exceção para UM compromisso: a ADM autoriza ao salvar aquele compromisso (vale só para ele, o horário e as pessoas dele). Reabrir para todos é outra ação, explícita.</span></dd>
-                <dt>Novo dia</dt><dd><form class="ag-form" id="cfDia" style="margin:0"><div><input id="cfDd" type="date" class="soft-input" aria-label="Data"></div><div><select id="cfDt" class="soft-input" aria-label="Tipo"><option value="feriado">Feriado (aviso)</option><option value="fechada">Unidade fechada (bloqueia)</option><option value="evento">Evento da Casa</option></select></div><div class="full"><input id="cfDtit" class="soft-input" maxlength="120" placeholder="Título (ex.: Dedetização)" aria-label="Título"></div><div class="full"><input id="cfDn" class="soft-input" maxlength="300" placeholder="Observação (opcional)" aria-label="Observação"></div><div class="full"><button type="button" class="soft-btn soft-btn-secondary ag-btn-sm" id="cfDAdd">Adicionar dia</button></div></form></dd>
+                <dt>Dias da Casa</dt><dd>${c.dias.length ? c.dias.map(linhaDia).join("") : "Nenhum."}
+                    <span class="ag-nota" style="display:block">Feriado não fecha a Casa sozinho: escolha como a Casa funciona em cada data. Casa fechada bloqueia agendamentos; horário especial só aceita o que couber no intervalo. Exceção para UM compromisso: a ADM autoriza ao salvar aquele compromisso. Voltar ao normal para todos é outra ação, explícita.</span></dd>
+                <dt id="cfDTit">Novo dia</dt><dd><form class="ag-form" id="cfDia" style="margin:0">
+                    <div><label for="cfDd">Data</label><input id="cfDd" type="date" class="soft-input"></div>
+                    <div><label for="cfDtit">Identificação</label><input id="cfDtit" class="soft-input" maxlength="120" placeholder="Ex.: Proclamação da República, Manutenção"></div>
+                    <div><label for="cfDt">Que data é esta?</label><select id="cfDt" class="soft-input"><option value="feriado">Feriado</option><option value="evento">Evento</option><option value="outra">Data comum</option></select></div>
+                    <div><label for="cfDf">Como a Casa funciona neste dia?</label><select id="cfDf" class="soft-input"><option value="normal">Normal</option><option value="fechada">Fechada</option><option value="especial">Horário especial</option></select></div>
+                    <div class="cf-esp hidden"><label for="cfDhi">Das</label><input id="cfDhi" type="time" class="soft-input" value="08:00"></div>
+                    <div class="cf-esp hidden"><label for="cfDhf">Às</label><input id="cfDhf" type="time" class="soft-input" value="12:00"></div>
+                    <div class="full"><input id="cfDn" class="soft-input" maxlength="300" placeholder="Observação (opcional)" aria-label="Observação"></div>
+                    <div class="full ag-nota hidden" id="cfDPrev" role="status"></div>
+                    <div class="full"><button type="button" class="soft-btn soft-btn-secondary ag-btn-sm" id="cfDAdd">Adicionar dia</button> <button type="button" class="soft-btn soft-btn-secondary ag-btn-sm hidden" id="cfDCanc">Cancelar edição</button></div>
+                </form></dd>
                 <dt>Exceções autorizadas</dt><dd>${c.excecoes.length ? c.excecoes.map(esc).join("<br>") : "Nenhuma."}</dd>
                 <dt>Ausências informadas</dt><dd>${c.ausenciasInformadas.length ? c.ausenciasInformadas.map(esc).join("<br>") + `<span class="ag-nota" style="display:block">Confirme em Agenda › Pendências.</span>` : "Nenhuma aguardando confirmação."}</dd>
                 <dt>Horário das turmas</dt><dd><select id="cfCurso" class="soft-input" aria-label="Turma"><option value="">Escolha a turma…</option>${cursos.map(x => `<option value="${x.id}">${esc(x.nome)}</option>`).join("")}</select><div id="cfHor"></div></dd>
@@ -927,16 +943,50 @@
             const me = await api("/me"); if (me.ok) S.me = me.corpo;
             recarregar("Configuração salva.");
         });
-        $("#cfDAdd", m).addEventListener("click", async () => {
-            const x = await post("/dias", { data: $("#cfDd", m).value, tipo: $("#cfDt", m).value, titulo: $("#cfDtit", m).value.trim(), nota: $("#cfDn", m).value.trim() || null });
+        let editando = null, confirmado = null;
+        const corpoDia = () => {
+            const f = $("#cfDf", m).value;
+            return { data: $("#cfDd", m).value, tipo: $("#cfDt", m).value, funcionamento: f, horarioInicio: f === "especial" ? $("#cfDhi", m).value : null, horarioFim: f === "especial" ? $("#cfDhf", m).value : null, titulo: $("#cfDtit", m).value.trim(), nota: $("#cfDn", m).value.trim() || null };
+        };
+        const prev = $("#cfDPrev", m), btnAdd = $("#cfDAdd", m);
+        const limparPrevia = () => { confirmado = null; prev.classList.add("hidden"); prev.textContent = ""; btnAdd.textContent = editando ? "Salvar alterações" : "Adicionar dia"; };
+        const mostrarEsp = () => { m.querySelectorAll(".cf-esp").forEach(el => el.classList.toggle("hidden", $("#cfDf", m).value !== "especial")); };
+        ["#cfDd", "#cfDt", "#cfDf", "#cfDhi", "#cfDhf"].forEach(q => $(q, m).addEventListener("change", () => { mostrarEsp(); limparPrevia(); }));
+        $("#cfDCanc", m).addEventListener("click", () => recarregar("Edição cancelada."));
+        btnAdd.addEventListener("click", async () => {
+            const corpo = corpoDia(), chave = JSON.stringify(corpo);
+            if (confirmado !== chave) {
+                // primeiro mostra o que já está marcado e ficaria fora do funcionamento (só números); nada é cancelado
+                const p = await post("/dias/previa", corpo);
+                if (!p.ok) return erro(msg(p));
+                if (p.corpo.total > 0) {
+                    confirmado = chave;
+                    prev.textContent = p.corpo.texto + " Clique de novo para confirmar.";
+                    prev.classList.remove("hidden");
+                    btnAdd.textContent = "Confirmar e avisar responsáveis";
+                    return;
+                }
+            }
+            const x = editando ? await api("/dias/" + editando, { method: "PUT", body: corpo }) : await post("/dias", corpo);
             if (!x.ok) return erro(msg(x));
-            recarregar("Dia adicionado.");
+            const t = x.corpo.afetados && x.corpo.afetados.total ? ` ${x.corpo.afetados.total} compromisso(s) marcado(s) aparecem como pendência para os responsáveis.` : "";
+            recarregar((editando ? "Dia alterado." : "Dia adicionado.") + t);
         });
         m.addEventListener("click", async e => {
             const rm = e.target.closest("[data-remover]");
             if (rm) { const x = await api("/dias/" + rm.dataset.remover, { method: "DELETE" }); if (!x.ok) return erro(msg(x)); return recarregar("Dia removido."); }
             const ra = e.target.closest("[data-reabrir]");
-            if (ra) { const motivo = window.prompt("Reabrir a unidade para TODAS as pessoas neste dia. Motivo:"); if (!motivo) return; const x = await post(`/dias/${ra.dataset.reabrir}/reabrir`, { motivo }); if (!x.ok) return erro(msg(x)); return recarregar("Unidade reaberta para todos."); }
+            if (ra) { const motivo = window.prompt("Voltar ao funcionamento normal para TODAS as pessoas neste dia. Motivo:"); if (!motivo) return; const x = await post(`/dias/${ra.dataset.reabrir}/reabrir`, { motivo }); if (!x.ok) return erro(msg(x)); return recarregar("O dia voltou ao funcionamento normal para todos."); }
+            const ed = e.target.closest("[data-editar]");
+            if (ed) {
+                const d = c.dias.find(z => String(z.id) === ed.dataset.editar); if (!d) return;
+                editando = d.id;
+                $("#cfDd", m).value = d.data; $("#cfDt", m).value = d.tipo; $("#cfDf", m).value = d.funcionamento;
+                $("#cfDhi", m).value = d.horarioInicio || "08:00"; $("#cfDhf", m).value = d.horarioFim || "12:00";
+                $("#cfDtit", m).value = d.titulo; $("#cfDn", m).value = d.nota || "";
+                $("#cfDTit", m).textContent = "Editar dia"; $("#cfDCanc", m).classList.remove("hidden");
+                mostrarEsp(); limparPrevia(); $("#cfDtit", m).focus();
+            }
         });
         const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
         $("#cfCurso", m).addEventListener("change", async e => {

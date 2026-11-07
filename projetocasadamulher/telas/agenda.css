@@ -202,3 +202,6 @@
 .ag-card-agenda { margin-top: 10px; }
 .ag-erro { color: #A8323F; font-size: 0.85rem; margin-top: 6px; }
 .ag-carregando { color: #B48DA0; font-size: 0.85rem; padding: 0.5rem 0; }
+.ag-form .hidden, .ag-det .hidden { display: none; }
+.ag-dia-casa { padding: .35rem 0; border-bottom: 1px dashed #EBDDE4; }
+.ag-dia-casa .ag-nota { margin-top: .2rem; }

@@ -166,8 +166,16 @@ public class AgendaDiaEspecial
 
     public DateOnly Data { get; set; }
 
-    /// <summary>feriado, fechada ou evento.</summary>
+    /// <summary>Que data é esta: feriado, evento ou outra (data comum, ex.: manutenção).</summary>
     public string Tipo { get; set; } = string.Empty;
+
+    /// <summary>Como a Casa funciona neste dia: normal, fechada ou especial (horário especial).</summary>
+    public string Funcionamento { get; set; } = AgendaFuncionamento.Normal;
+
+    /// <summary>Horário especial: agendamentos só dentro deste intervalo.</summary>
+    public TimeOnly? HorarioInicio { get; set; }
+
+    public TimeOnly? HorarioFim { get; set; }
 
     public string Titulo { get; set; } = string.Empty;
 
@@ -288,6 +296,24 @@ public class AgendaConfiguracao
     public TimeOnly ExpedienteFim { get; set; } = new(17, 0);
 
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
+}
+
+public static class AgendaTipoDia
+{
+    public const string Feriado = "feriado";
+    public const string Evento = "evento";
+    public const string Outra = "outra";
+
+    public static readonly string[] Todos = [Feriado, Evento, Outra];
+}
+
+public static class AgendaFuncionamento
+{
+    public const string Normal = "normal";
+    public const string Fechada = "fechada";
+    public const string Especial = "especial";
+
+    public static readonly string[] Todos = [Normal, Fechada, Especial];
 }
 
 public static class AgendaArea
