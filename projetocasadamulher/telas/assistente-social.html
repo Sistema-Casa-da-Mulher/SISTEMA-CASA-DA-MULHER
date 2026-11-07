@@ -49,7 +49,7 @@
     <script src="auth.js?v=4" defer></script>
     <script src="app.js?v=18" defer></script>
     <script src="assistida-form.js?v=4" defer></script>
-    <script src="assistente-social.js?v=1" defer></script>
+    <script src="assistente-social.js?v=2" defer></script>
 </head>
 <body class="soft-page">
     <main id="servicoSocialPage" style="max-width: 1400px; margin: 0 auto; padding: 24px 20px;">
@@ -257,6 +257,13 @@
                     <button type="button" data-sec="plano">Plano</button>
                     <button type="button" data-sec="documentos">Documentos</button>
                 </nav>
+                <div id="avisoSemProntuario" class="soft-alert soft-alert--info hidden">
+                    <strong>Esta assistida ainda n&atilde;o tem prontu&aacute;rio social.</strong>
+                    Abra o prontu&aacute;rio (ou registre o primeiro atendimento) para usar Estudo social, Rede, Plano e Documentos.
+                    <div class="juridico-linha-acoes" style="margin-top: 8px;">
+                        <button type="button" id="btnAbrirProntuarioSecoes" class="soft-btn soft-btn-primary">Abrir prontu&aacute;rio social</button>
+                    </div>
+                </div>
 
                 <!-- Atendimentos -->
                 <div class="social-secao active" data-secao="atendimentos">

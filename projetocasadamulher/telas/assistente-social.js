@@ -79,6 +79,7 @@ function bindEventos() {
     $("btnCancelarCadastro").addEventListener("click", cancelarCadastro);
 
     $("btnAbrirProntuario").addEventListener("click", abrirProntuario);
+    $("btnAbrirProntuarioSecoes").addEventListener("click", abrirProntuario);
     $("btnCorrigirDados").addEventListener("click", corrigirDados);
     $("btnEncaminharJuridico").addEventListener("click", () => encaminhar("juridico", "Jurídico"));
     $("btnEncaminharPsicologia").addEventListener("click", () => encaminhar("psicologia", "Psicologia"));
@@ -154,8 +155,11 @@ function mostrarAba(aba) {
 }
 
 function mostrarSecao(secao) {
+    // Sem prontuário, só Atendimentos tem conteúdo; as outras partes mostram o aviso com o botão de abrir.
+    const semProntuario = Boolean(fichaAtual) && !fichaAtual.prontuarioId;
     document.querySelectorAll("[data-sec]").forEach((b) => b.classList.toggle("active", b.dataset.sec === secao));
-    document.querySelectorAll("[data-secao]").forEach((s) => s.classList.toggle("active", s.dataset.secao === secao));
+    document.querySelectorAll("[data-secao]").forEach((s) => s.classList.toggle("active", s.dataset.secao === secao && (secao === "atendimentos" || !semProntuario)));
+    $("avisoSemProntuario").classList.toggle("hidden", !semProntuario || !fichaAtual?.podeRegistrar);
 }
 
 function mostrarMensagem(texto, tipo) {
@@ -420,9 +424,11 @@ function renderizarFicha() {
     emergencia.classList.toggle("hidden", !usandoEmergencia);
     if (usandoEmergencia) emergencia.textContent = `Você está com acesso de emergência até ${new Date(f.acessoEmergenciaExpiraEm).toLocaleString("pt-BR")}.`;
 
-    // Sem acesso ao conteúdo, estudo, rede, plano e documentos nem aparecem.
-    document.querySelectorAll("[data-sec]").forEach((b) => b.classList.toggle("hidden", b.dataset.sec !== "atendimentos" && (!f.podeVerConteudo || !temProntuario)));
-    if (!f.podeVerConteudo || !temProntuario) mostrarSecao("atendimentos");
+    // Sem acesso ao conteúdo, estudo, rede, plano e documentos nem aparecem. Sem prontuário, aparecem
+    // com o aviso e o botão "Abrir prontuário social", para o caminho ficar claro.
+    document.querySelectorAll("[data-sec]").forEach((b) => b.classList.toggle("hidden", b.dataset.sec !== "atendimentos" && !f.podeVerConteudo));
+    const ativa = document.querySelector("[data-sec].active")?.dataset.sec || "atendimentos";
+    mostrarSecao(f.podeVerConteudo ? ativa : "atendimentos");
 
     $("cardNovoAtendimento").classList.toggle("hidden", !f.podeRegistrar);
     $("cardEncerrar").classList.toggle("hidden", !f.podeRegistrar || !f.totalAtendimentos || f.situacao === "encerrado");
