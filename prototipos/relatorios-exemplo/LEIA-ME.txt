@@ -1,0 +1,134 @@
+SISTEMA CASA DA MULHER - PROTÓTIPO DOS RELATÓRIOS
+Versão 2 (07/11/2026): regra inicial para validação na reunião
+=================================================================
+
+É SÓ PROTÓTIPO. Nada disto está no sistema nem na homologação.
+Todos os nomes, números e textos são FICTÍCIOS (foram geradas 236 assistidas
+de mentira, de setembro/2025 até 23/10/2026, só para as telas terem conteúdo).
+
+COMO ABRIR
+----------
+1. Descompacte o ZIP.
+2. Abra a pasta "prototipo" e dê dois cliques em index.html.
+   Funciona direto no navegador, sem internet e sem login.
+3. Escolha o perfil (ADM, Recepção, Jurídico, Psicologia, Professora).
+Quem não quiser abrir pode ver as telas prontas na pasta "prints" e
+dois exemplos de impressão em PDF na pasta "exemplos-impressao".
+
+REGRA INICIAL PARA VALIDAÇÃO (o que mudou nesta versão)
+-------------------------------------------------------
+São propostas concretas para a Casa aprovar ou corrigir na reunião.
+
+1. Cursos para o Jurídico e a Psicologia: SIM, com o mínimo necessário.
+   - Aparece: nome do curso, situação (cursando, concluído, interrompido,
+     aguardando vaga) e datas de início e término.
+   - Não aparece: frequência, faltas, justificativas, observações da
+     professora e o motivo da saída. Se for relevante ao atendimento, a
+     equipe compartilha de forma específica.
+   - Só nas fichas a que a profissional já tem acesso. Estar no Jurídico ou
+     na Psicologia não libera todas as fichas.
+   - O motivo de uma interrupção fica só com a professora. A Coordenação vê
+     os motivos só em contagem, sem nomes.
+
+2. Recepção vê a SITUAÇÃO OPERACIONAL do encaminhamento ao Jurídico.
+   - Aguardando atendimento / Agendado para dd/mm / Primeiro atendimento
+     realizado em dd/mm / Cancelado.
+   - ("Primeiro atendimento realizado" no lugar de "já foi atendida", para
+     não parecer que a demanda foi resolvida.)
+   - A situação vem do registro do próprio Jurídico: a Recepção não marca
+     nada à mão.
+   - Demanda, relato, processo, orientação jurídica e motivo do cancelamento
+     não aparecem. Casos com acesso restrito continuam fora.
+   - O relatório da Recepção ganhou um gráfico com essas quatro situações.
+
+3. Relatos e evoluções na impressão: opcionais e controlados.
+   - A caixa "Incluir relatos" / "Incluir evoluções" começa desmarcada em
+     cada nova geração (trocar a assistida ou o período desmarca tudo).
+   - Marcar a caixa não escolhe nada: a profissional marca, um por um, quais
+     relatos ou evoluções entram (ou "Marcar todos do período").
+   - Só a responsável pelo caso (Jurídico) ou a psicóloga responsável
+     (Psicologia) pode incluir conteúdo no PDF. Quem só pode ler vê um aviso;
+     quem não tem acesso vê "marcar a opção não libera acesso".
+   - Prévia: o texto escolhido aparece destacado na tela e, ao clicar em
+     Imprimir, uma janela lista o que vai sair no papel.
+   - Rastreabilidade: o histórico de ações guarda quem gerou, quando, de
+     qual assistida e quais registros sigilosos entraram, sem copiar os
+     textos. O rodapé do PDF diz se houve conteúdo sigiloso.
+   - Novo botão "Documento para outra instituição" (Jurídico e Psicologia):
+     separado do relatório de acompanhamento. A profissional escolhe
+     destinatário e finalidade e escreve só o necessário; relatos e
+     evoluções não entram automaticamente.
+
+4. Pontos de atenção do ADM: até 5, sem nomes e sem conteúdo.
+   Cada um diz o que aconteceu, o tamanho e quem pode agir:
+   - Fila e demora: aguardando 1º atendimento por área, acima do prazo e a
+     espera mais longa. Ação: rever agenda e capacidade.
+   - Encaminhamentos sem andamento: encaminhamentos sem agendamento e casos
+     com retorno vencido sem novo registro. Ação: distribuir e conferir.
+   - Capacidade dos cursos: turmas cheias que ainda recebem procura e turmas
+     com poucas vagas ocupadas. Ação: ajustar vagas, divulgação ou oferta.
+   - Interrupção da participação: faltas seguidas e interrupções. Ação: a
+     professora e a equipe avaliam (não é abandono, não há contato
+     automático, respeita o canal e o horário seguros).
+   - Qualidade dos registros: chamadas não lançadas. Avisa que os números
+     podem estar incompletos.
+   - Os critérios (prazo da fila, nº de faltas seguidas, retorno vencido,
+     ocupação baixa) são só exemplos e podem ser alterados na própria tela.
+     Não são regras da Casa.
+   - Sem alerta: "Nenhum alerta identificado pelos critérios configurados".
+
+5. Outros ajustes
+   - Risco alto/iminente da Psicologia saiu do ADM (topo e números). O risco
+     chega à equipe técnica pelo alerta da ficha, na hora em que é
+     registrado. Se a coordenação técnica precisar desse número, cria-se uma
+     permissão específica.
+   - Assistência social: "encaminhamentos sem confirmação de atendimento no
+     sistema". Não conta como atraso nem entra na fila ou nos destaques,
+     porque falta de registro não prova falta de atendimento.
+   - "Evasão" foi trocada por "Taxa de interrupção" = interrupções no
+     período ÷ todas as alunas que estiveram na turma no período (inclui
+     quem continua cursando). Antes, 2 desistências e nenhuma conclusão no
+     mês davam 100%.
+   - "Desistiu" virou "Interrompido".
+
+O QUE TEM EM CADA TELA
+----------------------
+Cada perfil ganha uma aba "Relatórios", no mesmo visual das telas atuais,
+com duas partes: Relatório Estatístico/Geral (da Casa no ADM, da área nos
+outros) e Relatório individual da assistida. Período: Mensal, Semestral,
+Anual ou Geral (no individual, Geral = desde a entrada dela na Casa).
+
+- ADM: pontos de atenção; resumo comparado com o período anterior; cursos e
+  encaminhamentos mais e menos procurados; tabela dos cursos (procura,
+  ativas, vagas, ocupação, conclusões, interrupções, taxa de interrupção,
+  frequência, aulas); filas e espera; combinações na chegada; evolução mês
+  a mês; perfil de quem chegou; Jurídico e Psicologia em números; frequência
+  e faltas; trabalho por profissional; sigilo e segurança.
+- Recepção: acolhimentos, situação dos encaminhamentos ao Jurídico, cursos
+  escolhidos, movimento por dia e horário, por recepcionista, perfil, fichas
+  atualizadas e a lista das acolhidas.
+- Jurídico: atendimentos, casos, fila e espera, retornos, demanda, medida
+  protetiva, encaminhamentos externos, origem, por profissional, sigilo,
+  processos e lista de casos (só metadados).
+- Psicologia: sessões, comparecimento, acompanhamentos, fila, risco atual e
+  como evoluiu, encerramentos, encaminhamentos externos, por psicóloga e
+  lista de prontuários (sem conteúdo).
+- Professora: por curso, alunas ativas, entradas, conclusões, interrupções,
+  frequência aula a aula, justificativas, tabela de cada aluna, aviso de
+  quem está faltando muito (para avaliar), observações e aulas.
+- Assistente social: fica para quando o perfil existir.
+
+O QUE O SISTEMA AINDA NÃO GRAVA (marcado como "DADO NOVO" nas telas)
+---------------------------------------------------------------------
+  - Data em que a aluna terminou ou saiu do curso, e o motivo da saída.
+  - Número de vagas de cada curso.
+  - Agendamento e cancelamento do encaminhamento ao Jurídico (para a
+    Recepção ver "Agendado" e "Cancelado").
+  - Seleção de registros sigilosos e o "Documento para outra instituição".
+
+PRINTS
+------
+01 índice · 02-03 ADM geral (mês e ano) · 04 ADM individual
+05-06 Recepção · 07-09 Jurídico · 10-12 Psicologia · 13-14 Professora
+15 celular · 16 prévia antes de imprimir · 17 documento para outra
+instituição · 18 Jurídico sem permissão de exportar
