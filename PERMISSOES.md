@@ -11,7 +11,7 @@ Importante: esconder botoes no front-end melhora a usabilidade, mas nao e a segu
 | `adm` | Coordenacao/administracao, com acesso total. |
 | `recepcao` | Primeiro atendimento, cadastro inicial e triagem sem prontuarios confidenciais. |
 | `professor` | Atividades de curso, frequencia e informacoes educacionais. |
-| `as_social` | Acompanhamento social/psicologico e prontuario social. |
+| `as_social` | Servico Social: prontuario social, estudo social, rede, plano e documentos (CRESS no cadastro). |
 | `juridico` | Atendimento juridico e orientacao legal. |
 | `psicologia` | Atendimento psicologico e prontuario psicologico (CRP obrigatorio no convite). |
 
@@ -40,10 +40,11 @@ Importante: esconder botoes no front-end melhora a usabilidade, mas nao e a segu
 | `SomenteAdm` | `adm` | Administracao, convites, funcionarios e historico de acoes. |
 | `AcessoRecepcao` | `adm`, `recepcao` | Cadastro inicial, triagem e recepcao. |
 | `AcessoCursos` | `adm`, `professor` | Cursos, frequencia e atividades educacionais. |
-| `AcessoProntuarioSocial` | `adm`, `as_social` | Prontuario social e acompanhamento. |
+| `AcessoProntuarioSocial` | `adm`, `as_social` | Servico Social (`/api/servico-social`). A coordenacao so acessa os indicadores. |
+| `AnexosEquipeTecnica` | `as_social`, `juridico`, `psicologia` | Documentos do Servico Social (`/api/anexos-sociais`). Recepcao e Coordenacao ficam de fora ja na politica. |
 | `AcessoJuridico` | `adm`, `juridico` | Atendimento juridico. |
 | `AcessoPsicologia` | `adm`, `psicologia` | Psicologia. A coordenacao so acessa os indicadores. |
-| `AcessoRelatorios` | `adm`, `recepcao`, `professor`, `juridico`, `psicologia` | Aba Relatorios (`/api/relatorios`); cada perfil recebe so o que ja ve no seu modulo. |
+| `AcessoRelatorios` | `adm`, `recepcao`, `professor`, `juridico`, `psicologia`, `as_social` | Aba Relatorios (`/api/relatorios`); cada perfil recebe so o que ja ve no seu modulo. |
 | `CadastroAssistidas` | `adm`, `recepcao`, `as_social`, `juridico`, `psicologia` | Cadastro unico das assistidas (`/api/assistidas`). |
 
 ## Areas do front-end
@@ -61,7 +62,7 @@ O helper `CasaMulherAuth.podeAcessar(area)` usa as mesmas areas conceituais:
 | `social` | `adm`, `as_social` |
 | `juridico` | `adm`, `juridico` |
 | `psicologia` | `adm`, `psicologia` |
-| `relatorios` | `adm`, `recepcao`, `professor`, `juridico`, `psicologia` |
+| `relatorios` | `adm`, `recepcao`, `professor`, `juridico`, `psicologia`, `as_social` |
 
 ## Cadastro unico e Juridico
 
@@ -85,6 +86,18 @@ O helper `CasaMulherAuth.podeAcessar(area)` usa as mesmas areas conceituais:
 - **Juridico** ve apenas "em acompanhamento na Psicologia" e o alerta de risco, sem conteudo. **Recepcao** nao ve nada da Psicologia. **Coordenacao** ve so os indicadores (numeros sem nome).
 - Declaracao de comparecimento impressa sem nenhum conteudo da sessao.
 - Sem campo de diagnostico/CID; grupos de apoio ficam para uma fase futura.
+
+## Servico Social
+
+- Perfil `as_social` (rotulo "Servico Social", ID `SOC-...`). O convite pede o CRESS (recomendado); se faltar, a propria assistente social preenche na tela (aviso no topo). O CRESS sai na declaracao de comparecimento, no documento para outra instituicao e no rodape dos relatorios dela.
+- Mesmo circuito de cadastro unico e encaminhamentos internos: Recepcao, Juridico e Psicologia encaminham para a fila do Servico Social e vice-versa. Cadastro feito pelo Servico Social aparece para os outros perfis como "Equipe tecnica da Casa". O Servico Social ve e pode marcar acesso restrito.
+- Prontuario social por assistida (`SOC-AAAA-NNNNNN`), com responsaveis, atendimentos numerados (acolhimento, individual, visita domiciliar, contato telefonico, articulacao com a rede, outro) e adendos. Nada e editado nem apagado.
+- Estudo social com versoes (historico) e indicadores de vulnerabilidade. "Sem renda" e "sem moradia segura" tambem sao marcados pelo proprio estudo (renda, situacao de rua, convive com o agressor).
+- Encaminhamentos a rede (CRAS, CREAS, Defensoria, Conselho Tutelar, UBS, CAPS, Casa-abrigo, INSS, DDM, outro) com situacao; plano de acompanhamento com metas, prazo e situacao.
+- **Visibilidade padrao: somente as responsaveis.** Outras assistentes sociais veem que o atendimento existiu e o aviso de vulnerabilidade; acesso de emergencia de 12 horas, auditado.
+- **Juridico e Psicologia** veem so "em acompanhamento no Servico Social" e que existe aviso de vulnerabilidade, sem detalhes. **Recepcao** nao ve nada. **Coordenacao** ve so numeros (indicadores e "Servico Social em numeros" no relatorio).
+- **Documentos (anexos)**: PDF, JPG ou PNG ate 5 MB, conferidos pela extensao e pela assinatura do arquivo. Ficam no banco, criptografados com AES-256-GCM (chave `ANEXOS_CRYPTO_KEY` ou a mesma `HML_DB_SNAPSHOT_KEY` do snapshot). Teto total de 60 MB (`ANEXOS_LIMITE_TOTAL_MB`) para o snapshot no GitHub continuar pequeno. Download so pela API, com login; envio, visualizacao, download, recusa e exclusao (logica, com motivo) vao para a auditoria. Cada documento e "Somente Servico Social" (padrao) ou "Equipe tecnica": Juridico/Psicologia responsaveis pela assistida podem ver e baixar. Documentos nunca entram em PDF.
+- Novas funcoes que vierem para o Servico Social entram como outra parte (`partial`) do `ServicoSocialController`, usando `CarregarProntuarioComAcessoAsync` para seguir as mesmas regras.
 
 ## Cursos e transferencia de responsabilidades (ADM)
 

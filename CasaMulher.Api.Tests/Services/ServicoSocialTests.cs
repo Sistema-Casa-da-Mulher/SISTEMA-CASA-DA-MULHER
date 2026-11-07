@@ -187,6 +187,16 @@ public sealed class ServicoSocialTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task FichaSemProntuarioAbreSemErro()
+    {
+        var r = await Social(Social1).ObterProntuario(_assistidaId, default);
+        var ficha = (ProntuarioSocialDetalheResponse)((OkObjectResult)r.Result!).Value!;
+        Assert.Null(ficha.ProntuarioId);
+        Assert.True(ficha.PodeRegistrar);
+        Assert.Empty(ficha.EncaminhamentosRede);
+    }
+
+    [Fact]
     public async Task OutraAssistenteSocialSoVeQueOAtendimentoExistiuAteUsarEmergencia()
     {
         await AtendimentoAsync(Social1);

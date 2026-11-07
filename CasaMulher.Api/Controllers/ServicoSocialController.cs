@@ -166,8 +166,8 @@ public partial class ServicoSocialController : ControllerBase
             Atendimentos = atendimentos.Select(a => MapearAtendimento(a, ver, anexosAtivos.Count(x => x.AtendimentoSocialId == a.Id))).ToList(),
             Estudo = ver && estudos.Count > 0 ? MapearEstudo(estudos[0]) : null,
             HistoricoEstudo = ver ? estudos.Skip(1).Select(MapearEstudo).ToList() : [],
-            EncaminhamentosRede = ver ? prontuario!.EncaminhamentosRede.OrderByDescending(e => e.Data).ThenByDescending(e => e.Id).Select(MapearEncaminhamento).ToList() : [],
-            Metas = ver ? prontuario!.Metas.OrderBy(m => m.Situacao == MetaSocialSituacao.Concluida).ThenBy(m => m.Prazo ?? DateOnly.MaxValue).Select(m => MapearMeta(m, hoje)).ToList() : [],
+            EncaminhamentosRede = ver && prontuario is not null ? prontuario.EncaminhamentosRede.OrderByDescending(e => e.Data).ThenByDescending(e => e.Id).Select(MapearEncaminhamento).ToList() : [],
+            Metas = ver && prontuario is not null ? prontuario.Metas.OrderBy(m => m.Situacao == MetaSocialSituacao.Concluida).ThenBy(m => m.Prazo ?? DateOnly.MaxValue).Select(m => MapearMeta(m, hoje)).ToList() : [],
             Anexos = ver ? anexosAtivos.OrderByDescending(a => a.CriadoEm).Select(a => MapearAnexo(a, numeros, ver)).ToList() : []
         };
 
