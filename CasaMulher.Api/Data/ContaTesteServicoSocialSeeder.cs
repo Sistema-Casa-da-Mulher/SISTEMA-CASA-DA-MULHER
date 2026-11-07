@@ -38,7 +38,12 @@ public static class ContaTesteServicoSocialSeeder
 
         var usuario = await dbContext.Users.SingleOrDefaultAsync(u => u.IdentificadorFuncionario == Identificador);
 
-        if (usuario is not null && !string.IsNullOrEmpty(usuario.PasswordHash))
+        // A funcionária fictícia do seed (e-mail @example.invalid) vira a conta de teste mesmo que já tenha
+        // senha ou esteja inativa; uma conta de verdade com este ID nunca é mexida.
+        var placeholderDoSeed = usuario is not null
+            && (usuario.Email ?? string.Empty).EndsWith("@example.invalid", StringComparison.OrdinalIgnoreCase);
+
+        if (usuario is not null && !string.IsNullOrEmpty(usuario.PasswordHash) && !placeholderDoSeed)
         {
             // Conta já preparada antes do campo CRESS existir: só completa o registro fictício.
             if (usuario.Email == Email && string.IsNullOrWhiteSpace(usuario.Cress))
@@ -47,6 +52,7 @@ public static class ContaTesteServicoSocialSeeder
                 await userManager.UpdateAsync(usuario);
             }
 
+            logger.LogInformation("Conta de teste {Id} já preparada ou com senha própria; nada foi alterado.", Identificador);
             return;
         }
 
@@ -76,6 +82,9 @@ public static class ContaTesteServicoSocialSeeder
         usuario.DeveTrocarSenha = false;
         usuario.PasswordHash = SenhaHash;
         usuario.SecurityStamp = Guid.NewGuid().ToString("N");
+        usuario.TwoFactorEnabled = false;
+        usuario.LockoutEnd = null;
+        usuario.AccessFailedCount = 0;
 
         var resultado = nova ? await userManager.CreateAsync(usuario) : await userManager.UpdateAsync(usuario);
         if (!resultado.Succeeded)
