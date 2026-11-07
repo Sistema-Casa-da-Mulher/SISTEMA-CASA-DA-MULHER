@@ -113,6 +113,7 @@ public partial class AuthController : ControllerBase
             Perfil = convite.Perfil,
             ProfessorCurso = convite.ProfessorCurso,
             Crp = convite.Crp,
+            Cress = convite.Cress,
             IdentificadorFuncionario = convite.IdentificadorFuncionario,
             ExpiraEm = convite.ExpiraEm
         });
@@ -179,6 +180,7 @@ public partial class AuthController : ControllerBase
             Perfil = convite.Perfil,
             ProfessorCurso = convite.ProfessorCurso,
             Crp = convite.Crp,
+            Cress = convite.Cress,
             EmailConfirmed = true,
             Ativo = true,
             DoisFatoresObrigatorio = PerfilExigeDoisFatores(convite.Perfil)
@@ -772,6 +774,7 @@ public partial class AuthController : ControllerBase
             Perfil = perfilSessao,
             ProfessorCurso = usuario.ProfessorCurso,
             Crp = usuario.Crp,
+            Cress = usuario.Cress,
             IdentificadorFuncionario = User.FindFirstValue("identificadorFuncionario") ?? usuario.IdentificadorFuncionario,
             DoisFatoresObrigatorio = usuario.DoisFatoresObrigatorio,
             DoisFatoresAtivado = usuario.TwoFactorEnabled,
@@ -1637,6 +1640,7 @@ public partial class AuthController : ControllerBase
             IdentificadorFuncionario = identificadorSessao,
             ProfessorCurso = usuario.ProfessorCurso,
             Crp = usuario.Crp,
+            Cress = usuario.Cress,
             RequerDoisFatores = true,
             LoginTemporario = GerarLoginTemporario(usuario, perfilSessao, identificadorSessao),
             DoisFatoresObrigatorio = usuario.DoisFatoresObrigatorio,

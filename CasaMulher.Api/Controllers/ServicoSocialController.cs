@@ -161,6 +161,7 @@ public partial class ServicoSocialController : ControllerBase
             EmAtendimentoJuridico = emJuridico,
             EmAcompanhamentoPsicologia = emPsicologia,
             AnexosDisponiveis = _arquivos.Disponivel,
+            MeuCress = await CressAsync(usuario.UserId, cancellationToken),
             TotalAtendimentos = atendimentos.Count,
             Atendimentos = atendimentos.Select(a => MapearAtendimento(a, ver, anexosAtivos.Count(x => x.AtendimentoSocialId == a.Id))).ToList(),
             Estudo = ver && estudos.Count > 0 ? MapearEstudo(estudos[0]) : null,
@@ -206,7 +207,7 @@ public partial class ServicoSocialController : ControllerBase
             return Ok(new { mensagem = "O prontuário já está aberto." });
         }
 
-        var prontuario = NovoProntuario(assistida, usuario, DateTime.UtcNow);
+        var prontuario = NovoProntuario(assistida, usuario, DateTime.UtcNow, await CressAsync(usuario.UserId, cancellationToken));
         await SalvarComNumeroAsync(prontuario, cancellationToken);
 
         await _auditoria.RegistrarAsync(
@@ -246,8 +247,9 @@ public partial class ServicoSocialController : ControllerBase
             return Proibido("Este prontuário está visível somente para as responsáveis. Peça acesso de emergência se precisar atender.");
         }
 
+        var cress = await CressAsync(usuario.UserId, cancellationToken);
         var novo = prontuario is null;
-        prontuario ??= NovoProntuario(assistida, usuario, agora);
+        prontuario ??= NovoProntuario(assistida, usuario, agora, cress);
 
         // Um novo atendimento reabre um acompanhamento encerrado.
         if (prontuario.Situacao == ProntuarioSituacao.Encerrado)
@@ -274,6 +276,7 @@ public partial class ServicoSocialController : ControllerBase
             ProfissionalUserId = usuario.UserId,
             ProfissionalIdentificador = usuario.Identificador,
             ProfissionalNome = usuario.Nome,
+            ProfissionalCress = cress,
             Tipo = request.Tipo,
             TipoOutro = request.Tipo == "outro" ? Limitar(request.TipoOutro?.Trim(), 120) : null,
             Relato = request.Relato.Trim(),
@@ -389,7 +392,8 @@ public partial class ServicoSocialController : ControllerBase
             AssistidaNome = atendimento.Prontuario.Assistida.Nome,
             Data = atendimento.RealizadoEm,
             ProfissionalNome = atendimento.ProfissionalNome,
-            ProfissionalIdentificador = atendimento.ProfissionalIdentificador
+            ProfissionalIdentificador = atendimento.ProfissionalIdentificador,
+            ProfissionalCress = atendimento.ProfissionalCress
         });
     }
 
@@ -454,6 +458,7 @@ public partial class ServicoSocialController : ControllerBase
             UserId = profissional.Id,
             Identificador = profissional.IdentificadorFuncionario,
             Nome = profissional.NomeCompleto,
+            Cress = profissional.Cress,
             AtribuidoPorIdentificador = usuario.Identificador,
             AtribuidoEm = DateTime.UtcNow
         });
@@ -581,10 +586,40 @@ public partial class ServicoSocialController : ControllerBase
         var profissionais = await _dbContext.Users.AsNoTracking()
             .Where(u => u.Ativo && perfis.Contains(u.Perfil.ToLower()))
             .OrderBy(u => u.NomeCompleto)
-            .Select(u => new ResponsavelSocialResponse { UserId = u.Id, Identificador = u.IdentificadorFuncionario, Nome = u.NomeCompleto })
+            .Select(u => new ResponsavelSocialResponse { UserId = u.Id, Identificador = u.IdentificadorFuncionario, Nome = u.NomeCompleto, Cress = u.Cress })
             .ToListAsync(cancellationToken);
 
         return Ok(profissionais);
+    }
+
+    /// <summary>
+    /// A própria assistente social informa ou corrige o CRESS, que sai na declaração e nos documentos.
+    /// Não bloqueia o trabalho: sem CRESS a tela só mostra um aviso.
+    /// </summary>
+    [HttpPut("meu-cress")]
+    public async Task<IActionResult> AtualizarMeuCress(MeuCressRequest request, CancellationToken cancellationToken)
+    {
+        var usuario = await _assistidas.ObterUsuarioAsync(User, cancellationToken);
+        if (usuario is null) return Unauthorized();
+        if (!AssistidasService.AtuaComoServicoSocial(usuario.Perfil)) return Proibido("Somente o Serviço Social informa CRESS.");
+
+        var cress = request.Cress?.Trim() ?? string.Empty;
+        if (cress.Length < 4 || cress.Length > 60 || !cress.Any(char.IsDigit))
+        {
+            return BadRequest(new { mensagem = "Informe o CRESS com região e número (ex.: CRESS 9ª Região nº 00000)." });
+        }
+
+        var conta = await _dbContext.Users.SingleAsync(u => u.Id == usuario.UserId, cancellationToken);
+        conta.Cress = cress;
+
+        // As responsabilidades atuais passam a mostrar o CRESS novo; atendimentos já salvos mantêm o que tinham.
+        var responsavel = await _dbContext.ProntuariosSociaisResponsaveis.Where(r => r.UserId == usuario.UserId).ToListAsync(cancellationToken);
+        responsavel.ForEach(r => r.Cress = cress);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _auditoria.RegistrarAsync("SOCIAL_CRESS_ATUALIZADO", "ApplicationUser", usuario.UserId, $"{usuario.Identificador} atualizou o próprio CRESS.");
+        var snapshot = await _snapshot.PersistAsync("social_cress", CancellationToken.None);
+        return Ok(new { mensagem = "CRESS salvo.", cress, avisoSnapshot = snapshot.AvisoSnapshot });
     }
 
     /// <summary>Contagens anônimas: nenhum nome sai deste endpoint. É o que a coordenação vê.</summary>
@@ -634,7 +669,10 @@ public partial class ServicoSocialController : ControllerBase
         return (prontuario, await _acesso.AvaliarAsync(prontuario, usuario, cancellationToken));
     }
 
-    private static ProntuarioSocial NovoProntuario(Assistida assistida, UsuarioAtuante usuario, DateTime agora)
+    private Task<string?> CressAsync(string userId, CancellationToken cancellationToken) =>
+        _dbContext.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.Cress).SingleOrDefaultAsync(cancellationToken);
+
+    private static ProntuarioSocial NovoProntuario(Assistida assistida, UsuarioAtuante usuario, DateTime agora, string? cress)
     {
         var prontuario = new ProntuarioSocial { AssistidaId = assistida.Id, Ano = DataLocal(agora).Year, CriadoEm = agora, AtualizadoEm = agora };
         prontuario.Responsaveis.Add(new ProntuarioSocialResponsavel
@@ -642,6 +680,7 @@ public partial class ServicoSocialController : ControllerBase
             UserId = usuario.UserId,
             Identificador = usuario.Identificador,
             Nome = usuario.Nome,
+            Cress = cress,
             AtribuidoPorIdentificador = usuario.Identificador,
             AtribuidoEm = agora
         });
@@ -721,7 +760,7 @@ public partial class ServicoSocialController : ControllerBase
     }
 
     internal static ResponsavelSocialResponse MapearResponsavel(ProntuarioSocialResponsavel r) =>
-        new() { UserId = r.UserId, Identificador = r.Identificador, Nome = r.Nome };
+        new() { UserId = r.UserId, Identificador = r.Identificador, Nome = r.Nome, Cress = r.Cress };
 
     private static AdendoSocialResponse MapearAdendo(AtendimentoSocialAdendo adendo) => new()
     {
@@ -742,6 +781,7 @@ public partial class ServicoSocialController : ControllerBase
             CriadoEm = a.CriadoEm,
             ProfissionalNome = a.ProfissionalNome,
             ProfissionalIdentificador = a.ProfissionalIdentificador,
+            ProfissionalCress = a.ProfissionalCress,
             ConteudoOculto = !conteudo
         };
 

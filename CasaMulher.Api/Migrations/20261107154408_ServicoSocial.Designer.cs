@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CasaMulher.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261107031629_ServicoSocial")]
+    [Migration("20261107154408_ServicoSocial")]
     partial class ServicoSocial
     {
         /// <inheritdoc />
@@ -139,6 +139,10 @@ namespace CasaMulher.Api.Migrations
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Cress")
+                        .HasMaxLength(60)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CriadoEm")
@@ -610,6 +614,10 @@ namespace CasaMulher.Api.Migrations
 
                     b.Property<int>("Numero")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProfissionalCress")
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ProfissionalIdentificador")
                         .IsRequired()
@@ -1434,6 +1442,10 @@ namespace CasaMulher.Api.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Cress")
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("TEXT");
 
@@ -2167,6 +2179,10 @@ namespace CasaMulher.Api.Migrations
                     b.Property<string>("AtribuidoPorIdentificador")
                         .IsRequired()
                         .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Cress")
+                        .HasMaxLength(60)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Identificador")

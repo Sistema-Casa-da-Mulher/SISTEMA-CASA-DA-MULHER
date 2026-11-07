@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jur&iacute;dico - Casa da Mulher</title>
-    <link rel="stylesheet" href="style.css?v=17">
+    <link rel="stylesheet" href="style.css?v=18">
     <style>
         .juridico-panel {
             display: none;
@@ -146,10 +146,11 @@
         }
     </style>
     <script src="config.js" defer></script>
-    <script src="auth.js?v=3" defer></script>
-    <script src="app.js?v=17" defer></script>
-    <script src="assistida-form.js?v=3" defer></script>
-    <script src="juridico.js?v=5" defer></script>
+    <script src="auth.js?v=4" defer></script>
+    <script src="app.js?v=18" defer></script>
+    <script src="assistida-form.js?v=4" defer></script>
+    <script src="servico-social-compartilhado.js?v=1" defer></script>
+    <script src="juridico.js?v=6" defer></script>
 </head>
 <body class="soft-page">
     <main id="juridicoPage" style="max-width: 1400px; margin: 0 auto; padding: 24px 20px;">
@@ -327,6 +328,9 @@
                 <div id="fichaRiscoPsicologico" class="soft-alert soft-alert--risco hidden">
                     A Psicologia registrou risco alto para esta assistida. Os detalhes s&atilde;o sigilosos; em caso de d&uacute;vida, fale com a psic&oacute;loga respons&aacute;vel antes de agir.
                 </div>
+                <div id="fichaVulnerabilidadeSocial" class="soft-alert soft-alert--vulnerabilidade hidden">
+                    O Servi&ccedil;o Social registrou um aviso de vulnerabilidade para esta assistida. Os detalhes s&atilde;o sigilosos; se precisar, fale com a assistente social respons&aacute;vel.
+                </div>
                 <div id="fichaRestrito" class="soft-alert soft-alert--restrito hidden">
                     Acesso restrito: n&atilde;o confirme a ningu&eacute;m que esta mulher &eacute; atendida pela Casa, nem por telefone, nem pessoalmente.
                 </div>
@@ -338,6 +342,7 @@
                     <div class="juridico-linha-acoes">
                         <button type="button" id="btnCorrigirDados" class="soft-btn soft-btn-warning">Corrigir dados</button>
                         <button type="button" id="btnEncaminharPsicologia" class="soft-btn soft-btn-warning">Encaminhar &agrave; Psicologia</button>
+                        <button type="button" id="btnEncaminharServicoSocial" class="soft-btn soft-btn-warning">Encaminhar ao Servi&ccedil;o Social</button>
                         <select id="motivoRestricao" class="soft-input" style="max-width: 320px;">
                             <option value="">Motivo do acesso restrito...</option>
                             <option value="segredo_justica">Processo em segredo de justi&ccedil;a</option>
@@ -347,6 +352,12 @@
                         </select>
                         <button type="button" id="btnRestricao" class="soft-btn soft-btn-danger">Marcar acesso restrito</button>
                     </div>
+                </div>
+
+                <div class="soft-card hidden" style="width: 100%; margin-top: 16px;" id="cardDocumentosSociais">
+                    <h2 class="soft-card-title">Documentos do Servi&ccedil;o Social</h2>
+                    <p class="section-intro">Documentos que o Servi&ccedil;o Social abriu para a equipe t&eacute;cnica que acompanha a assistida. Cada abertura fica registrada.</p>
+                    <div data-lista></div>
                 </div>
 
                 <div class="soft-card hidden" style="width: 100%; margin-top: 16px;" id="cardEncaminhamento">

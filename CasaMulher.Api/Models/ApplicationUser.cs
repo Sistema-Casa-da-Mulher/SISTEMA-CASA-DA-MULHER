@@ -15,6 +15,9 @@ public class ApplicationUser : IdentityUser
     /// <summary>Registro no Conselho Regional de Psicologia (perfil psicologia).</summary>
     public string? Crp { get; set; }
 
+    /// <summary>Registro no Conselho Regional de Serviço Social (perfil as_social). Ex.: "CRESS 9ª Região nº 00000".</summary>
+    public string? Cress { get; set; }
+
     public bool Ativo { get; set; } = true;
 
     public bool DeveTrocarSenha { get; set; }

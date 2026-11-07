@@ -56,7 +56,7 @@ public sealed partial class RelatoriosService
             AssistidaId = a.Id,
             Nome = a.Nome,
             Periodo = p.ParaDto(),
-            Rodape = Rodape(usuario, agora).Replace("A impressão deste relatório fica registrada", "A geração e a impressão deste relatório ficam registradas")
+            Rodape = Rodape(usuario, agora, perfil, d).Replace("A impressão deste relatório fica registrada", "A geração e a impressão deste relatório ficam registradas")
         };
 
         // ---- cabeçalho
@@ -763,7 +763,9 @@ public sealed partial class RelatoriosService
         if (!d.PorId.TryGetValue(assistidaId, out var a)) return null;
         var p = DesdeEntrada(ResolverPeriodo(tipo, referencia, d.InicioDados), Local(a.CriadoEm), "a entrada na Casa");
         var agora = DateTime.UtcNow;
-        var registro = d.Usuarios.TryGetValue(u.UserId, out var usr) && !string.IsNullOrWhiteSpace(usr.Crp) ? $"CRP {usr.Crp}" : $"ID {u.Identificador}";
+        var registro = !d.Usuarios.TryGetValue(u.UserId, out var usr) ? $"ID {u.Identificador}"
+            : perfil == PerfisAcesso.AssistenteSocial ? (string.IsNullOrWhiteSpace(usr.Cress) ? $"ID {u.Identificador} (CRESS não informado)" : usr.Cress)
+            : !string.IsNullOrWhiteSpace(usr.Crp) ? $"CRP {usr.Crp}" : $"ID {u.Identificador}";
         var resp = new DocumentoExternoResponse
         {
             Nome = a.Nome,

@@ -36,9 +36,9 @@
         }
     </style>
     <script src="config.js" defer></script>
-    <script src="auth.js?v=3" defer></script>
-    <script src="app.js?v=17" defer></script>
-    <script src="assistida-form.js?v=3" defer></script>
+    <script src="auth.js?v=4" defer></script>
+    <script src="app.js?v=18" defer></script>
+    <script src="assistida-form.js?v=4" defer></script>
     <script defer>
         (function () {
             "use strict";
@@ -177,7 +177,7 @@
                 const partes = nomesCursos(d.cursoIds);
                 if (d.juridica) partes.push("Jurídica");
                 if (d.psicologa) partes.push("Psicóloga");
-                if (d.assistenteSocial) partes.push("Assistente social");
+                if (d.assistenteSocial) partes.push("Serviço Social");
                 return partes.join(" · ");
             }
 
@@ -724,7 +724,7 @@
                     <div class="direcionamento-lista direcionamento-lista--curta" role="group" aria-label="Encaminhamentos">
                         <label class="soft-check"><input type="checkbox" id="encJuridica"> Jur&iacute;dica</label>
                         <label class="soft-check"><input type="checkbox" id="encPsicologa"> Psic&oacute;loga</label>
-                        <label class="soft-check"><input type="checkbox" id="encAssistenteSocial"> Assistente social</label>
+                        <label class="soft-check"><input type="checkbox" id="encAssistenteSocial"> Servi&ccedil;o Social</label>
                     </div>
                 </section>
             </div>

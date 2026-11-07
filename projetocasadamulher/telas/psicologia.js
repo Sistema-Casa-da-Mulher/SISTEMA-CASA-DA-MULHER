@@ -70,6 +70,7 @@ function bindEventos() {
 
     document.getElementById("btnCorrigirDados").addEventListener("click", corrigirDados);
     document.getElementById("btnEncaminharJuridico").addEventListener("click", encaminharJuridico);
+    document.getElementById("btnEncaminharServicoSocial").addEventListener("click", encaminharServicoSocial);
     document.getElementById("btnRestricao").addEventListener("click", alternarRestricao);
     document.getElementById("btnAtribuir").addEventListener("click", atribuirResponsavel);
     document.getElementById("btnVisibilidade").addEventListener("click", salvarVisibilidade);
@@ -323,9 +324,11 @@ function renderizarFicha() {
     if (a.acessoRestrito) badges.push(`<span class="soft-badge soft-badge--restrito">Acesso restrito · ${esc(AF().ROTULOS_MOTIVO_RESTRICAO[a.motivoRestricao] || "")}</span>`);
     if (f.emAtendimentoJuridico) badges.push('<span class="soft-badge soft-badge--juridico">Em atendimento no Jurídico</span>');
     else if (a.encaminhadaJuridico) badges.push('<span class="soft-badge soft-badge--juridico">Encaminhada ao Jurídico</span>');
+    if (f.emAcompanhamentoServicoSocial) badges.push('<span class="soft-badge soft-badge--social">Em acompanhamento no Serviço Social</span>');
+    else if (f.encaminhadaServicoSocial) badges.push('<span class="soft-badge soft-badge--social">Encaminhada ao Serviço Social</span>');
     document.getElementById("fichaBadges").innerHTML = badges.join("");
 
-    const origem = { recepcao: "Recepção", juridico: "Jurídico", psicologia: "Psicologia" }[a.origem] || a.origem;
+    const origem = { recepcao: "Recepção", juridico: "Jurídico", psicologia: "Psicologia", equipe_tecnica: "Equipe técnica" }[a.origem] || a.origem;
     const dados = [
         ["CPF", a.cpfMascarado],
         ["Nascimento", AF().formatarData(a.dataNascimento)],
@@ -339,6 +342,9 @@ function renderizarFicha() {
         .join("");
 
     document.getElementById("btnEncaminharJuridico").classList.toggle("hidden", a.encaminhadaJuridico);
+    document.getElementById("btnEncaminharServicoSocial").classList.toggle("hidden", f.encaminhadaServicoSocial);
+    document.getElementById("fichaVulnerabilidadeSocial").classList.toggle("hidden", !f.alertaVulnerabilidadeSocial);
+    window.CasaMulherServicoSocial?.carregarDocumentos(a.id, "cardDocumentosSociais");
     const motivo = document.getElementById("motivoRestricao");
     motivo.value = a.motivoRestricao || "";
     motivo.classList.toggle("hidden", a.acessoRestrito);
@@ -532,6 +538,16 @@ async function registrarAdendo(sessaoId) {
     if (!response.ok) return mostrarMensagem(await erroDe(response, "Não foi possível salvar o adendo."), "error");
 
     mostrarMensagem("Adendo registrado.", "success");
+    await abrirFicha(fichaAtual.assistida.id);
+}
+
+async function encaminharServicoSocial() {
+    if (!confirm("Encaminhar esta assistida para a fila do Serviço Social? Nada das sessões é compartilhado.")) return;
+
+    const response = await api(`/api/assistidas/${fichaAtual.assistida.id}/encaminhar`, { method: "POST", body: { area: "servico_social" } });
+    if (!response.ok) return mostrarMensagem(await erroDe(response, "Não foi possível encaminhar."), "error");
+
+    mostrarMensagem("Assistida encaminhada ao Serviço Social.", "success");
     await abrirFicha(fichaAtual.assistida.id);
 }
 

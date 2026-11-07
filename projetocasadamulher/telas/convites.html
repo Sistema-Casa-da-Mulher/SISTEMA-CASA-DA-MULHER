@@ -6,8 +6,8 @@
     <title>Gerenciar Convites - Casa da Mulher</title>
     <link rel="stylesheet" href="style.css?v=17">
     <script src="config.js" defer></script>
-    <script src="auth.js?v=3" defer></script>
-    <script src="app.js?v=17" defer></script>
+    <script src="auth.js?v=4" defer></script>
+    <script src="app.js?v=18" defer></script>
 </head>
 <body class="soft-page">
     <main id="convitesPage" class="soft-admin-main">
@@ -75,7 +75,7 @@
                                 <option value="adm">Coordena&ccedil;&atilde;o / ADM</option>
                                 <option value="recepcao">Recep&ccedil;&atilde;o</option>
                                 <option value="professor">Professor</option>
-                                <option value="as_social">Assistente Social</option>
+                                <option value="as_social">Servi&ccedil;o Social (assistente social)</option>
                                 <option value="juridico">Jur&iacute;dico</option>
                                 <option value="psicologia">Psicologia</option>
                             </select>
@@ -89,6 +89,11 @@
                     <div id="grupoConviteCrp" class="soft-input-group hidden">
                         <label for="conviteCrp" class="soft-label">CRP da psic&oacute;loga</label>
                         <input type="text" id="conviteCrp" name="crp" class="soft-input" maxlength="20" placeholder="Ex: 06/123456">
+                    </div>
+
+                    <div id="grupoConviteCress" class="soft-input-group hidden">
+                        <label for="conviteCress" class="soft-label">CRESS da assistente social (recomendado)</label>
+                        <input type="text" id="conviteCress" name="cress" class="soft-input" maxlength="60" placeholder="Ex: CRESS 9&ordf; Regi&atilde;o n&ordm; 00000">
                     </div>
 
                     <label class="checkbox-field" style="display: flex; align-items: center; gap: 8px; color: #8F6C7E; font-weight: 600; font-size: 0.95rem; cursor: pointer;">

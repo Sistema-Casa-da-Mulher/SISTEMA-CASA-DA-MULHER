@@ -138,6 +138,10 @@ namespace CasaMulher.Api.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Cress")
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("TEXT");
 
@@ -607,6 +611,10 @@ namespace CasaMulher.Api.Migrations
 
                     b.Property<int>("Numero")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProfissionalCress")
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ProfissionalIdentificador")
                         .IsRequired()
@@ -1431,6 +1439,10 @@ namespace CasaMulher.Api.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Cress")
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("TEXT");
 
@@ -2164,6 +2176,10 @@ namespace CasaMulher.Api.Migrations
                     b.Property<string>("AtribuidoPorIdentificador")
                         .IsRequired()
                         .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Cress")
+                        .HasMaxLength(60)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Identificador")

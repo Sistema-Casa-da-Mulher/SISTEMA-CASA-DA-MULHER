@@ -5,6 +5,12 @@ public class ResponsavelSocialResponse
     public string UserId { get; set; } = string.Empty;
     public string Identificador { get; set; } = string.Empty;
     public string Nome { get; set; } = string.Empty;
+    public string? Cress { get; set; }
+}
+
+public class MeuCressRequest
+{
+    public string Cress { get; set; } = string.Empty;
 }
 
 public class SocialAssistidaResumoResponse
@@ -46,6 +52,7 @@ public class AtendimentoSocialResponse
     public DateTime CriadoEm { get; set; }
     public string ProfissionalNome { get; set; } = string.Empty;
     public string ProfissionalIdentificador { get; set; } = string.Empty;
+    public string? ProfissionalCress { get; set; }
 
     /// <summary>Verdadeiro quando quem consulta só pode ver que o atendimento existiu.</summary>
     public bool ConteudoOculto { get; set; }
@@ -213,6 +220,9 @@ public class ProntuarioSocialDetalheResponse
     public bool EmAtendimentoJuridico { get; set; }
     public bool EmAcompanhamentoPsicologia { get; set; }
     public bool AnexosDisponiveis { get; set; }
+
+    /// <summary>CRESS de quem está usando a tela (vazio = mostrar aviso para preencher).</summary>
+    public string? MeuCress { get; set; }
     public int TotalAtendimentos { get; set; }
     public List<AtendimentoSocialResponse> Atendimentos { get; set; } = [];
     public EstudoSocialResponse? Estudo { get; set; }
@@ -252,6 +262,7 @@ public class DeclaracaoComparecimentoSocialResponse
     public DateTime Data { get; set; }
     public string ProfissionalNome { get; set; } = string.Empty;
     public string ProfissionalIdentificador { get; set; } = string.Empty;
+    public string? ProfissionalCress { get; set; }
 }
 
 public class IndicadoresServicoSocialResponse

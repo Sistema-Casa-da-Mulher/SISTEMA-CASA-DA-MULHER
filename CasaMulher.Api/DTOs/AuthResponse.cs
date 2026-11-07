@@ -15,6 +15,8 @@ public class AuthResponse
     public string? ProfessorCurso { get; set; }
     public string? Crp { get; set; }
 
+    public string? Cress { get; set; }
+
     public string IdentificadorFuncionario { get; set; } = string.Empty;
 
     public bool RequerDoisFatores { get; set; }

@@ -29,7 +29,7 @@ public class AssistidaRequest
 
 public class EncaminharAssistidaRequest
 {
-    /// <summary>juridico ou psicologia.</summary>
+    /// <summary>juridico, psicologia ou servico_social.</summary>
     public string Area { get; set; } = string.Empty;
 }
 

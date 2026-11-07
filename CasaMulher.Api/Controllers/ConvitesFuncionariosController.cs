@@ -139,6 +139,12 @@ public class ConvitesFuncionariosController : ControllerBase
             request.Crp = null;
         }
 
+        // CRESS da assistente social: recomendado no convite; se faltar, a própria profissional preenche depois.
+        if (perfil != PerfisAcesso.AssistenteSocial)
+        {
+            request.Cress = null;
+        }
+
         var usuarioExistente = await _userManager.FindByEmailAsync(email);
 
         if (usuarioExistente is not null)
@@ -160,6 +166,7 @@ public class ConvitesFuncionariosController : ControllerBase
             Perfil = perfil,
             ProfessorCurso = request.ProfessorCurso?.Trim(),
             Crp = request.Crp?.Trim(),
+            Cress = string.IsNullOrWhiteSpace(request.Cress) ? null : request.Cress.Trim(),
             IdentificadorFuncionario = identificadorFuncionario,
             CodigoHash = _codigoService.GerarHash(codigoCadastro),
             ExpiraEm = DateTime.UtcNow.AddDays(request.DiasParaExpirar)

@@ -185,7 +185,7 @@ public sealed partial class RelatoriosService
 
     internal sealed record RegistroAula(int AssistidaId, int CursoId, DateOnly Data, string Status, string? Observacao, string? Tema);
 
-    internal sealed record Usuario(string Id, string Nome, string Identificador, string Perfil, string? Crp, bool Ativo);
+    internal sealed record Usuario(string Id, string Nome, string Identificador, string Perfil, string? Crp, bool Ativo, string? Cress = null);
 
     internal sealed class Dados
     {
@@ -270,7 +270,7 @@ public sealed partial class RelatoriosService
             .ToListAsync(ct);
 
         var usuarios = await _db.Users.AsNoTracking()
-            .Select(u => new Usuario(u.Id, u.NomeCompleto, u.IdentificadorFuncionario, u.Perfil.ToLower(), u.Crp, u.Ativo))
+            .Select(u => new Usuario(u.Id, u.NomeCompleto, u.IdentificadorFuncionario, u.Perfil.ToLower(), u.Crp, u.Ativo, u.Cress))
             .ToListAsync(ct);
 
         var datas = assistidas.Select(a => a.CriadoEm).ToList();
@@ -714,6 +714,12 @@ public sealed partial class RelatoriosService
     private static bool ProntuarioAtivoEm(ProntuarioPsicologico p, DateOnly data) =>
         p.Sessoes.Count > 0 && Local(p.Sessoes.Min(s => s.CriadoEm)) <= data
         && (p.EncerradoEm is null || Local(p.EncerradoEm.Value) > data);
+
+    /// <summary>No Serviço Social o rodapé leva o CRESS de quem gerou (documento de profissão regulamentada).</summary>
+    private static string Rodape(UsuarioAtuante usuario, DateTime agora, string perfil, Dados d) =>
+        perfil == PerfisAcesso.AssistenteSocial && d.Usuarios.TryGetValue(usuario.UserId, out var u) && !string.IsNullOrWhiteSpace(u.Cress)
+            ? Rodape(usuario, agora).Replace($"({usuario.Identificador})", $"({usuario.Identificador} · {u.Cress})")
+            : Rodape(usuario, agora);
 
     private static string Rodape(UsuarioAtuante usuario, DateTime agora) =>
         $"Gerado por {usuario.Nome} ({usuario.Identificador}) em {HoraLocal(agora):dd/MM/yyyy} às {HoraLocal(agora):HH:mm}. Documento de uso interno da Casa da Mulher, com dados protegidos pela LGPD. A impressão deste relatório fica registrada no histórico de ações.";

@@ -10,7 +10,7 @@
         Danca: "Dança",
         Juridica: "Jurídica",
         Psicologa: "Psicóloga",
-        AssistenteSocial: "Assistente social"
+        AssistenteSocial: "Serviço Social"
     };
 
     const ROTULOS_CONTATO = {

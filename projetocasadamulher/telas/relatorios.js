@@ -467,7 +467,7 @@
     function documentoExterno() {
         const r = S.ind;
         if (!r) return;
-        const doJur = S.ctx.perfil === "juridico";
+        const doJur = S.ctx.perfil === "juridico" || S.ctx.perfil === "as_social";
         const m = modal(`<h3 style="color:#8B586F;margin-top:0">Documento para outra instituição</h3>
             <p class="rel-nota">Este documento é separado do relatório de acompanhamento. Os ${doJur ? "relatos" : "registros das sessões"} não entram automaticamente: escreva só o necessário para a finalidade. O resumo não é enviado ao servidor nem guardado.</p>
             <div class="soft-form-group" style="margin-bottom:10px"><label>Destinatário</label><input class="soft-input" data-campo="dest" maxlength="160" placeholder="Ex.: CAPS de referência, Defensoria Pública"></div>
@@ -537,7 +537,7 @@
         const el = $("relVisao");
         const visoes = S.ctx.visoesDisponiveis || [];
         if (!visoes.length) { el.classList.add("hidden"); return; }
-        const nomes = { adm: "ADM / Coordenação", recepcao: "Recepção", juridico: "Jurídico", psicologia: "Psicologia", professor: "Professora" };
+        const nomes = { adm: "ADM / Coordenação", recepcao: "Recepção", juridico: "Jurídico", psicologia: "Psicologia", as_social: "Serviço Social", professor: "Professora" };
         el.classList.remove("hidden");
         el.innerHTML = `<b>Equipe de desenvolvimento:</b> ver os relatórios como <select class="soft-input" style="max-width:240px;padding:6px 10px">${visoes.map((v) => `<option value="${v}" ${v === S.ctx.perfil ? "selected" : ""}>${nomes[v] || v}</option>`).join("")}</select>`;
         el.querySelector("select").addEventListener("change", (e) => {

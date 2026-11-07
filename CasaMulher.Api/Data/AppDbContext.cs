@@ -102,6 +102,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(user => user.IdentificadorFuncionario)
                 .IsUnique();
 
+            entity.Property(user => user.Cress)
+                .HasMaxLength(60);
+
             entity.Property(user => user.NomeCompleto)
                 .HasMaxLength(160)
                 .IsRequired();
@@ -156,6 +159,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .IsUnique();
 
             entity.HasIndex(convite => convite.Email);
+
+            entity.Property(convite => convite.Cress)
+                .HasMaxLength(60);
 
             entity.Property(convite => convite.NomeCompleto)
                 .HasMaxLength(160)
@@ -735,6 +741,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.ToTable("ProntuariosSociaisResponsaveis");
             entity.HasIndex(r => new { r.ProntuarioSocialId, r.UserId }).IsUnique();
             entity.HasIndex(r => r.UserId);
+            entity.Property(r => r.Cress).HasMaxLength(60);
             entity.Property(r => r.UserId).IsRequired().HasMaxLength(450);
             entity.Property(r => r.Identificador).IsRequired().HasMaxLength(80);
             entity.Property(r => r.Nome).IsRequired().HasMaxLength(160);
@@ -754,6 +761,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(a => a.ProfissionalUserId).IsRequired().HasMaxLength(450);
             entity.Property(a => a.ProfissionalIdentificador).IsRequired().HasMaxLength(80);
             entity.Property(a => a.ProfissionalNome).IsRequired().HasMaxLength(160);
+            entity.Property(a => a.ProfissionalCress).HasMaxLength(60);
             entity.Property(a => a.Tipo).IsRequired().HasMaxLength(30);
             entity.Property(a => a.TipoOutro).HasMaxLength(120);
             entity.Property(a => a.Relato).IsRequired().HasMaxLength(5000);

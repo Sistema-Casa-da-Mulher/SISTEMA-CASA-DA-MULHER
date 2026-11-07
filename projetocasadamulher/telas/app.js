@@ -1044,9 +1044,11 @@ async function setupConvites() {
 
     const convitePerfilSelect = document.getElementById("convitePerfil");
     const grupoCrp = document.getElementById("grupoConviteCrp");
+    const grupoCress = document.getElementById("grupoConviteCress");
     if (convitePerfilSelect && grupoCrp) {
         convitePerfilSelect.addEventListener("change", () => {
             grupoCrp.classList.toggle("hidden", convitePerfilSelect.value !== "psicologia");
+            grupoCress?.classList.toggle("hidden", convitePerfilSelect.value !== "as_social");
         });
     }
 
@@ -1097,6 +1099,11 @@ async function setupConvites() {
 
         if (perfil === "professor") {
             dados.professorCurso = cursoProfessorSelect.value;
+        }
+
+        // CRESS é recomendado: se ficar vazio, a assistente social preenche na própria tela.
+        if (perfil === "as_social") {
+            dados.cress = document.getElementById("conviteCress")?.value.trim() || null;
         }
 
         if (perfil === "psicologia") {

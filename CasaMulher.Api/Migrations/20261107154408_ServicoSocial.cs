@@ -11,6 +11,20 @@ namespace CasaMulher.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<string>(
+                name: "Cress",
+                table: "FuncionariosConvites",
+                type: "TEXT",
+                maxLength: 60,
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "Cress",
+                table: "AspNetUsers",
+                type: "TEXT",
+                maxLength: 60,
+                nullable: true);
+
             migrationBuilder.CreateTable(
                 name: "ProntuariosSociais",
                 columns: table => new
@@ -52,6 +66,7 @@ namespace CasaMulher.Api.Migrations
                     ProfissionalUserId = table.Column<string>(type: "TEXT", maxLength: 450, nullable: false),
                     ProfissionalIdentificador = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
                     ProfissionalNome = table.Column<string>(type: "TEXT", maxLength: 160, nullable: false),
+                    ProfissionalCress = table.Column<string>(type: "TEXT", maxLength: 60, nullable: true),
                     Tipo = table.Column<string>(type: "TEXT", maxLength: 30, nullable: false),
                     TipoOutro = table.Column<string>(type: "TEXT", maxLength: 120, nullable: true),
                     Relato = table.Column<string>(type: "TEXT", maxLength: 5000, nullable: false),
@@ -203,6 +218,7 @@ namespace CasaMulher.Api.Migrations
                     UserId = table.Column<string>(type: "TEXT", maxLength: 450, nullable: false),
                     Identificador = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
                     Nome = table.Column<string>(type: "TEXT", maxLength: 160, nullable: false),
+                    Cress = table.Column<string>(type: "TEXT", maxLength: 60, nullable: true),
                     AtribuidoPorIdentificador = table.Column<string>(type: "TEXT", maxLength: 80, nullable: false),
                     AtribuidoEm = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
@@ -431,6 +447,14 @@ namespace CasaMulher.Api.Migrations
             migrationBuilder.DropIndex(
                 name: "IX_Assistidas_EncaminhadaAssistenciaSocialEm",
                 table: "Assistidas");
+
+            migrationBuilder.DropColumn(
+                name: "Cress",
+                table: "FuncionariosConvites");
+
+            migrationBuilder.DropColumn(
+                name: "Cress",
+                table: "AspNetUsers");
         }
     }
 }

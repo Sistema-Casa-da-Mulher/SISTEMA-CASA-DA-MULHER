@@ -145,6 +145,7 @@ public partial class FuncionariosController
             responsavel.UserId = destino.Id;
             responsavel.Identificador = destino.IdentificadorFuncionario;
             responsavel.Nome = destino.NomeCompleto;
+            responsavel.Cress = destino.Cress;
             responsavel.AtribuidoPorIdentificador = adm;
             responsavel.AtribuidoEm = agora;
         }

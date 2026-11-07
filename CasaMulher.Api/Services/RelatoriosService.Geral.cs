@@ -37,7 +37,7 @@ public sealed partial class RelatoriosService
         resposta.Perfil = perfil;
         resposta.Periodo = p.ParaDto();
         resposta.Comparacao ??= ant is null ? null : $"comparado com {ant.Rotulo.ToLower(PtBr)}";
-        resposta.Rodape = Rodape(usuario, agora);
+        resposta.Rodape = Rodape(usuario, agora, perfil, dados);
         return resposta;
     }
 

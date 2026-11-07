@@ -283,7 +283,7 @@ public sealed partial class RelatoriosService
         var pares = new List<RelatorioParDto>
         {
             new() { Rotulo = "Prontuário", Valor = pront.Numero },
-            new() { Rotulo = "Assistente social responsável", Valor = responsavel is null ? "Sem responsável" : responsavel.Nome },
+            new() { Rotulo = "Assistente social responsável", Valor = responsavel is null ? "Sem responsável" : responsavel.Nome + (string.IsNullOrWhiteSpace(responsavel.Cress) ? "" : $" · {responsavel.Cress}") },
             new() { Rotulo = "Aberto em", Valor = Fd(abertura) },
             new() { Rotulo = "Situação", Valor = pront.EncerradoEm is null ? "Em acompanhamento" : $"Encerrado em {Fd(Local(pront.EncerradoEm.Value))}" + (podeVer ? " · " + RotulosEncerramentoSocial.GetValueOrDefault(pront.MotivoEncerramento ?? "", "Outro") : "") },
             new() { Rotulo = "Quem vê as anotações", Valor = pront.Visibilidade == ProntuarioVisibilidade.Equipe ? "Toda a equipe do Serviço Social" : "Somente a responsável" }

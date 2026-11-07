@@ -66,6 +66,8 @@ public class ProntuarioSocialResponsavel
 
     public string Nome { get; set; } = string.Empty;
 
+    public string? Cress { get; set; }
+
     public string AtribuidoPorIdentificador { get; set; } = string.Empty;
 
     public DateTime AtribuidoEm { get; set; } = DateTime.UtcNow;
@@ -91,6 +93,9 @@ public class AtendimentoSocial
     public string ProfissionalIdentificador { get; set; } = string.Empty;
 
     public string ProfissionalNome { get; set; } = string.Empty;
+
+    /// <summary>CRESS da profissional no momento do registro (vai para a declaração de comparecimento).</summary>
+    public string? ProfissionalCress { get; set; }
 
     /// <summary>acolhimento, individual, visita_domiciliar, contato_telefonico, articulacao_rede ou outro.</summary>
     public string Tipo { get; set; } = string.Empty;

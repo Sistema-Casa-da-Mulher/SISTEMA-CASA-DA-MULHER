@@ -19,6 +19,8 @@ public static class ContaTesteServicoSocialSeeder
 
     private const string Nome = "Serviço Social Teste";
 
+    public const string CressFicticio = "CRESS 9ª Região nº 00000 (fictício)";
+
     // PBKDF2 (formato do ASP.NET Identity v3) da senha de teste compartilhada.
     private const string SenhaHash = "AQAAAAIAAYagAAAAEM5OyxRnBJUxzmFtsjXLzDATR/17TVZjgUoeIirxXeK7wPWyjMxjN0iAoF2nNr+0Xg==";
 
@@ -38,6 +40,13 @@ public static class ContaTesteServicoSocialSeeder
 
         if (usuario is not null && !string.IsNullOrEmpty(usuario.PasswordHash))
         {
+            // Conta já preparada antes do campo CRESS existir: só completa o registro fictício.
+            if (usuario.Email == Email && string.IsNullOrWhiteSpace(usuario.Cress))
+            {
+                usuario.Cress = CressFicticio;
+                await userManager.UpdateAsync(usuario);
+            }
+
             return;
         }
 
@@ -60,6 +69,7 @@ public static class ContaTesteServicoSocialSeeder
         usuario.Email = Email;
         usuario.EmailConfirmed = true;
         usuario.Perfil = PerfisAcesso.AssistenteSocial;
+        usuario.Cress = CressFicticio;
         usuario.Ativo = true;
         usuario.DoisFatoresObrigatorio = false;
         usuario.SecuritySetupRequired = false;

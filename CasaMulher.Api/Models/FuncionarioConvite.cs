@@ -16,6 +16,8 @@ public class FuncionarioConvite
 
     public string? Crp { get; set; }
 
+    public string? Cress { get; set; }
+
     public string CodigoHash { get; set; } = string.Empty;
 
     public bool Usado { get; set; }

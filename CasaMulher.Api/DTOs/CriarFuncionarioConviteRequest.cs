@@ -28,6 +28,9 @@ public class CriarFuncionarioConviteRequest
     [MaxLength(20)]
     public string? Crp { get; set; }
 
+    [MaxLength(60)]
+    public string? Cress { get; set; }
+
     [Range(1, 90)]
     public int DiasParaExpirar { get; set; } = 7;
 
