@@ -89,6 +89,14 @@ public class CasoJuridicoDetalheResponse
 
     public bool EncaminhadaPsicologia { get; set; }
 
+    /// <summary>Só o fato de estar em acompanhamento no Serviço Social, sem conteúdo.</summary>
+    public bool AcompanhamentoServicoSocial { get; set; }
+
+    /// <summary>O Serviço Social registrou indicadores de vulnerabilidade (sem dizer quais).</summary>
+    public bool AlertaVulnerabilidadeSocial { get; set; }
+
+    public bool EncaminhadaServicoSocial { get; set; }
+
     public DateTime? EncaminhadaJuridicoEm { get; set; }
 
     public DateTime? AgendadoPara { get; set; }

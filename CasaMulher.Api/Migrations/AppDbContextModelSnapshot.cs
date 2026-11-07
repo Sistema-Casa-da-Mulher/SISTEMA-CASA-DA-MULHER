@@ -17,6 +17,112 @@ namespace CasaMulher.Api.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.26");
 
+            modelBuilder.Entity("CasaMulher.Api.Models.AnexoSocial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AtendimentoSocialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AutorIdentificador")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AutorNome")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AutorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Excluido")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExcluidoPorIdentificador")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MotivoExclusao")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NomeArquivo")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProntuarioSocialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("TamanhoBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Visibilidade")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AtendimentoSocialId");
+
+                    b.HasIndex("ProntuarioSocialId");
+
+                    b.ToTable("AnexosSociais", (string)null);
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.AnexoSocialConteudo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AnexoSocialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("Dados")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnexoSocialId")
+                        .IsUnique();
+
+                    b.ToTable("AnexosSociaisConteudos", (string)null);
+                });
+
             modelBuilder.Entity("CasaMulher.Api.Models.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -296,6 +402,8 @@ namespace CasaMulher.Api.Migrations
                     b.HasIndex("Cpf")
                         .IsUnique();
 
+                    b.HasIndex("EncaminhadaAssistenciaSocialEm");
+
                     b.HasIndex("EncaminhadaJuridicoEm");
 
                     b.HasIndex("EncaminhadaPsicologiaEm");
@@ -486,6 +594,106 @@ namespace CasaMulher.Api.Migrations
                     b.HasIndex("AtendimentoJuridicoId");
 
                     b.ToTable("AtendimentosJuridicosAdendos", (string)null);
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.AtendimentoSocial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Numero")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProfissionalIdentificador")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfissionalNome")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfissionalUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProntuarioSocialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Providencias")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("RealizadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Relato")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TipoOutro")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RealizadoEm");
+
+                    b.HasIndex("ProntuarioSocialId", "Numero")
+                        .IsUnique();
+
+                    b.ToTable("AtendimentosSociais", (string)null);
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.AtendimentoSocialAdendo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AtendimentoSocialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AutorIdentificador")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AutorNome")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AutorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Texto")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AtendimentoSocialId");
+
+                    b.ToTable("AtendimentosSociaisAdendos", (string)null);
                 });
 
             modelBuilder.Entity("CasaMulher.Api.Models.AuditoriaEvento", b =>
@@ -833,6 +1041,75 @@ namespace CasaMulher.Api.Migrations
                     b.ToTable("EmailEventos", (string)null);
                 });
 
+            modelBuilder.Entity("CasaMulher.Api.Models.EncaminhamentoRede", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Data")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Destino")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DestinoOutro")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ObservacaoStatus")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfissionalIdentificador")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfissionalNome")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfissionalUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProntuarioSocialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("StatusAtualizadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StatusAtualizadoPorIdentificador")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Data");
+
+                    b.HasIndex("ProntuarioSocialId");
+
+                    b.ToTable("EncaminhamentosRede", (string)null);
+                });
+
             modelBuilder.Entity("CasaMulher.Api.Models.EquipeConvite", b =>
                 {
                     b.Property<int>("Id")
@@ -1040,6 +1317,103 @@ namespace CasaMulher.Api.Migrations
                     b.ToTable("EquipeSenhaResets", (string)null);
                 });
 
+            modelBuilder.Entity("CasaMulher.Api.Models.EstudoSocial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BeneficioOutro")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Beneficios")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CadUnico")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ComposicaoFamiliar")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("ConviveComAgressor")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DependentesJson")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Escolaridade")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FaixaRenda")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Moradia")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nis")
+                        .HasMaxLength(11)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Observacoes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("PessoasNoDomicilio")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProfissionalIdentificador")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfissionalNome")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfissionalUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProntuarioSocialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RedeApoio")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SituacaoTrabalho")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Versao")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Vulnerabilidades")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProntuarioSocialId", "Versao")
+                        .IsUnique();
+
+                    b.ToTable("EstudosSociais", (string)null);
+                });
+
             modelBuilder.Entity("CasaMulher.Api.Models.FuncionarioConvite", b =>
                 {
                     b.Property<int>("Id")
@@ -1229,6 +1603,63 @@ namespace CasaMulher.Api.Migrations
                     b.HasIndex("ApplicationUserId");
 
                     b.ToTable("GitHubUsuarioVinculos");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.MetaAcompanhamentoSocial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AtualizadaPorIdentificador")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ConcluidaEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CriadaPorIdentificador")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CriadaPorNome")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CriadaPorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("Prazo")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProntuarioSocialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Situacao")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProntuarioSocialId");
+
+                    b.ToTable("MetasAcompanhamentoSocial", (string)null);
                 });
 
             modelBuilder.Entity("CasaMulher.Api.Models.PasskeyChallenge", b =>
@@ -1616,6 +2047,151 @@ namespace CasaMulher.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("ProntuariosPsicologicosResponsaveis", (string)null);
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.ProntuarioSocial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Ano")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AssistidaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("EncerradoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MotivoEncerramento")
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Numero")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Sequencial")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Situacao")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Visibilidade")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VulnerabilidadesAtuais")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssistidaId")
+                        .IsUnique();
+
+                    b.HasIndex("Numero")
+                        .IsUnique();
+
+                    b.HasIndex("Ano", "Sequencial")
+                        .IsUnique();
+
+                    b.ToTable("ProntuariosSociais", (string)null);
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.ProntuarioSocialAcessoEmergencia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Identificador")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProntuarioSocialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProntuarioSocialId", "UserId");
+
+                    b.ToTable("ProntuariosSociaisAcessosEmergencia", (string)null);
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.ProntuarioSocialResponsavel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AtribuidoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AtribuidoPorIdentificador")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Identificador")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProntuarioSocialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ProntuarioSocialId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ProntuariosSociaisResponsaveis", (string)null);
                 });
 
             modelBuilder.Entity("CasaMulher.Api.Models.RecuperacaoSegurancaToken", b =>
@@ -2023,6 +2599,35 @@ namespace CasaMulher.Api.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("CasaMulher.Api.Models.AnexoSocial", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.AtendimentoSocial", "Atendimento")
+                        .WithMany()
+                        .HasForeignKey("AtendimentoSocialId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CasaMulher.Api.Models.ProntuarioSocial", "Prontuario")
+                        .WithMany("Anexos")
+                        .HasForeignKey("ProntuarioSocialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Atendimento");
+
+                    b.Navigation("Prontuario");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.AnexoSocialConteudo", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.AnexoSocial", "Anexo")
+                        .WithOne("Conteudo")
+                        .HasForeignKey("CasaMulher.Api.Models.AnexoSocialConteudo", "AnexoSocialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Anexo");
+                });
+
             modelBuilder.Entity("CasaMulher.Api.Models.AssistidaCurso", b =>
                 {
                     b.HasOne("CasaMulher.Api.Models.Assistida", "Assistida")
@@ -2058,6 +2663,28 @@ namespace CasaMulher.Api.Migrations
                     b.HasOne("CasaMulher.Api.Models.AtendimentoJuridico", "Atendimento")
                         .WithMany("Adendos")
                         .HasForeignKey("AtendimentoJuridicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Atendimento");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.AtendimentoSocial", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.ProntuarioSocial", "Prontuario")
+                        .WithMany("Atendimentos")
+                        .HasForeignKey("ProntuarioSocialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Prontuario");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.AtendimentoSocialAdendo", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.AtendimentoSocial", "Atendimento")
+                        .WithMany("Adendos")
+                        .HasForeignKey("AtendimentoSocialId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -2119,6 +2746,28 @@ namespace CasaMulher.Api.Migrations
                     b.Navigation("Chamada");
                 });
 
+            modelBuilder.Entity("CasaMulher.Api.Models.EncaminhamentoRede", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.ProntuarioSocial", "Prontuario")
+                        .WithMany("EncaminhamentosRede")
+                        .HasForeignKey("ProntuarioSocialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Prontuario");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.EstudoSocial", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.ProntuarioSocial", "Prontuario")
+                        .WithMany("Estudos")
+                        .HasForeignKey("ProntuarioSocialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Prontuario");
+                });
+
             modelBuilder.Entity("CasaMulher.Api.Models.GitHubUsuarioVinculo", b =>
                 {
                     b.HasOne("CasaMulher.Api.Models.ApplicationUser", "ApplicationUser")
@@ -2128,6 +2777,17 @@ namespace CasaMulher.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("ApplicationUser");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.MetaAcompanhamentoSocial", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.ProntuarioSocial", "Prontuario")
+                        .WithMany("Metas")
+                        .HasForeignKey("ProntuarioSocialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Prontuario");
                 });
 
             modelBuilder.Entity("CasaMulher.Api.Models.PasskeyCredential", b =>
@@ -2190,6 +2850,39 @@ namespace CasaMulher.Api.Migrations
                     b.HasOne("CasaMulher.Api.Models.ProntuarioPsicologico", "Prontuario")
                         .WithMany("Responsaveis")
                         .HasForeignKey("ProntuarioPsicologicoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Prontuario");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.ProntuarioSocial", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.Assistida", "Assistida")
+                        .WithMany()
+                        .HasForeignKey("AssistidaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Assistida");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.ProntuarioSocialAcessoEmergencia", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.ProntuarioSocial", "Prontuario")
+                        .WithMany()
+                        .HasForeignKey("ProntuarioSocialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Prontuario");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.ProntuarioSocialResponsavel", b =>
+                {
+                    b.HasOne("CasaMulher.Api.Models.ProntuarioSocial", "Prontuario")
+                        .WithMany("Responsaveis")
+                        .HasForeignKey("ProntuarioSocialId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2289,6 +2982,11 @@ namespace CasaMulher.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CasaMulher.Api.Models.AnexoSocial", b =>
+                {
+                    b.Navigation("Conteudo");
+                });
+
             modelBuilder.Entity("CasaMulher.Api.Models.ApplicationUser", b =>
                 {
                     b.Navigation("LoginIdentifiers");
@@ -2302,6 +3000,11 @@ namespace CasaMulher.Api.Migrations
                 });
 
             modelBuilder.Entity("CasaMulher.Api.Models.AtendimentoJuridico", b =>
+                {
+                    b.Navigation("Adendos");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.AtendimentoSocial", b =>
                 {
                     b.Navigation("Adendos");
                 });
@@ -2323,6 +3026,21 @@ namespace CasaMulher.Api.Migrations
                     b.Navigation("Responsaveis");
 
                     b.Navigation("Sessoes");
+                });
+
+            modelBuilder.Entity("CasaMulher.Api.Models.ProntuarioSocial", b =>
+                {
+                    b.Navigation("Anexos");
+
+                    b.Navigation("Atendimentos");
+
+                    b.Navigation("EncaminhamentosRede");
+
+                    b.Navigation("Estudos");
+
+                    b.Navigation("Metas");
+
+                    b.Navigation("Responsaveis");
                 });
 
             modelBuilder.Entity("CasaMulher.Api.Models.SessaoPsicologica", b =>

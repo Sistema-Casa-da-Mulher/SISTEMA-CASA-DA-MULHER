@@ -150,7 +150,9 @@ var rolesCursos = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAc
 var rolesProntuarioSocial = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.AssistenteSocial);
 var rolesJuridico = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Juridico);
 var rolesPsicologia = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Psicologia);
-var rolesRelatorios = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Recepcao, PerfisAcesso.Professor, PerfisAcesso.Juridico, PerfisAcesso.Psicologia);
+// Anexos do Serviço Social: Recepção e Coordenação ficam de fora já na política.
+var rolesAnexosEquipeTecnica = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.AssistenteSocial, PerfisAcesso.Juridico, PerfisAcesso.Psicologia);
+var rolesRelatorios = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Recepcao, PerfisAcesso.Professor, PerfisAcesso.Juridico, PerfisAcesso.Psicologia, PerfisAcesso.AssistenteSocial);
 var rolesCadastroAssistidas = IncluirEquipeDev(permitirEquipeDev, PerfisAcesso.Adm, PerfisAcesso.Recepcao, PerfisAcesso.AssistenteSocial, PerfisAcesso.Juridico, PerfisAcesso.Psicologia);
 
 builder.Services.AddAuthorization(options =>
@@ -177,6 +179,10 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy(PoliticasAcesso.AcessoPsicologia, policy =>
         policy.RequireRole(rolesPsicologia)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
+
+    options.AddPolicy(PoliticasAcesso.AnexosEquipeTecnica, policy =>
+        policy.RequireRole(rolesAnexosEquipeTecnica)
             .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 
     options.AddPolicy(PoliticasAcesso.AcessoRelatorios, policy =>
@@ -292,6 +298,8 @@ builder.Services.AddScoped<HmlDbSnapshotService>();
 builder.Services.AddScoped<AssistidasService>();
 builder.Services.AddScoped<CursosService>();
 builder.Services.AddScoped<RelatoriosService>();
+builder.Services.AddScoped<ServicoSocialAcessoService>();
+builder.Services.AddSingleton<AnexosSociaisArquivos>();
 builder.Services.AddScoped<SecuritySnapshotPersistenceService>();
 builder.Services.AddScoped<TermoSigiloService>();
 builder.Services.AddScoped<HomologacaoSeedService>();
@@ -515,6 +523,19 @@ try
 catch (Exception ex)
 {
     app.Logger.LogWarning(ex, "Migração dos cursos para o banco não pôde ser concluída agora.");
+}
+
+// Conta de teste compartilhada do Serviço Social (antes dos convites demo, que reservam IDs).
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+{
+    try
+    {
+        await ContaTesteServicoSocialSeeder.GarantirAsync(app.Services, app.Logger);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Conta de teste do Serviço Social não pôde ser preparada.");
+    }
 }
 
 var runDemoSeed = app.Configuration.GetValue("Seed:RunDemoData", app.Environment.IsDevelopment());

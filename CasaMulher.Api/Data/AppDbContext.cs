@@ -61,6 +61,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<ProntuarioPsicologicoAcessoEmergencia> ProntuariosPsicologicosAcessosEmergencia => Set<ProntuarioPsicologicoAcessoEmergencia>();
 
+    public DbSet<ProntuarioSocial> ProntuariosSociais => Set<ProntuarioSocial>();
+
+    public DbSet<ProntuarioSocialResponsavel> ProntuariosSociaisResponsaveis => Set<ProntuarioSocialResponsavel>();
+
+    public DbSet<AtendimentoSocial> AtendimentosSociais => Set<AtendimentoSocial>();
+
+    public DbSet<AtendimentoSocialAdendo> AtendimentosSociaisAdendos => Set<AtendimentoSocialAdendo>();
+
+    public DbSet<EstudoSocial> EstudosSociais => Set<EstudoSocial>();
+
+    public DbSet<EncaminhamentoRede> EncaminhamentosRede => Set<EncaminhamentoRede>();
+
+    public DbSet<MetaAcompanhamentoSocial> MetasAcompanhamentoSocial => Set<MetaAcompanhamentoSocial>();
+
+    public DbSet<AnexoSocial> AnexosSociais => Set<AnexoSocial>();
+
+    public DbSet<AnexoSocialConteudo> AnexosSociaisConteudos => Set<AnexoSocialConteudo>();
+
+    public DbSet<ProntuarioSocialAcessoEmergencia> ProntuariosSociaisAcessosEmergencia => Set<ProntuarioSocialAcessoEmergencia>();
+
     public DbSet<Curso> Cursos => Set<Curso>();
 
     public DbSet<ProfessorCurso> ProfessoresCursos => Set<ProfessorCurso>();
@@ -426,6 +446,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(a => a.Nome);
             entity.HasIndex(a => a.EncaminhadaJuridicoEm);
             entity.HasIndex(a => a.EncaminhadaPsicologiaEm);
+            entity.HasIndex(a => a.EncaminhadaAssistenciaSocialEm);
 
             entity.Property(a => a.Nome).IsRequired().HasMaxLength(160);
             entity.Property(a => a.Cpf).IsRequired().HasMaxLength(11);
@@ -687,6 +708,191 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(a => a.Prontuario)
                 .WithMany()
                 .HasForeignKey(a => a.ProntuarioPsicologicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ProntuarioSocial>(entity =>
+        {
+            entity.ToTable("ProntuariosSociais");
+            entity.HasIndex(p => p.AssistidaId).IsUnique();
+            entity.HasIndex(p => p.Numero).IsUnique();
+            entity.HasIndex(p => new { p.Ano, p.Sequencial }).IsUnique();
+            entity.Property(p => p.Numero).IsRequired().HasMaxLength(20);
+            entity.Property(p => p.Visibilidade).IsRequired().HasMaxLength(20);
+            entity.Property(p => p.Situacao).IsRequired().HasMaxLength(30);
+            entity.Property(p => p.MotivoEncerramento).HasMaxLength(40);
+            entity.Property(p => p.VulnerabilidadesAtuais).HasMaxLength(200);
+
+            // Restrict: o prontuário social nunca some junto com o cadastro.
+            entity.HasOne(p => p.Assistida)
+                .WithMany()
+                .HasForeignKey(p => p.AssistidaId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ProntuarioSocialResponsavel>(entity =>
+        {
+            entity.ToTable("ProntuariosSociaisResponsaveis");
+            entity.HasIndex(r => new { r.ProntuarioSocialId, r.UserId }).IsUnique();
+            entity.HasIndex(r => r.UserId);
+            entity.Property(r => r.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(r => r.Identificador).IsRequired().HasMaxLength(80);
+            entity.Property(r => r.Nome).IsRequired().HasMaxLength(160);
+            entity.Property(r => r.AtribuidoPorIdentificador).IsRequired().HasMaxLength(80);
+
+            entity.HasOne(r => r.Prontuario)
+                .WithMany(p => p.Responsaveis)
+                .HasForeignKey(r => r.ProntuarioSocialId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<AtendimentoSocial>(entity =>
+        {
+            entity.ToTable("AtendimentosSociais");
+            entity.HasIndex(a => new { a.ProntuarioSocialId, a.Numero }).IsUnique();
+            entity.HasIndex(a => a.RealizadoEm);
+            entity.Property(a => a.ProfissionalUserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.ProfissionalIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(a => a.ProfissionalNome).IsRequired().HasMaxLength(160);
+            entity.Property(a => a.Tipo).IsRequired().HasMaxLength(30);
+            entity.Property(a => a.TipoOutro).HasMaxLength(120);
+            entity.Property(a => a.Relato).IsRequired().HasMaxLength(5000);
+            entity.Property(a => a.Providencias).HasMaxLength(1000);
+
+            entity.HasOne(a => a.Prontuario)
+                .WithMany(p => p.Atendimentos)
+                .HasForeignKey(a => a.ProntuarioSocialId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AtendimentoSocialAdendo>(entity =>
+        {
+            entity.ToTable("AtendimentosSociaisAdendos");
+            entity.Property(a => a.Texto).IsRequired().HasMaxLength(2000);
+            entity.Property(a => a.AutorUserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.AutorIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(a => a.AutorNome).IsRequired().HasMaxLength(160);
+
+            entity.HasOne(a => a.Atendimento)
+                .WithMany(a => a.Adendos)
+                .HasForeignKey(a => a.AtendimentoSocialId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<EstudoSocial>(entity =>
+        {
+            entity.ToTable("EstudosSociais");
+            entity.HasIndex(e => new { e.ProntuarioSocialId, e.Versao }).IsUnique();
+            entity.Property(e => e.ComposicaoFamiliar).HasMaxLength(1000);
+            entity.Property(e => e.DependentesJson).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.FaixaRenda).HasMaxLength(30);
+            entity.Property(e => e.SituacaoTrabalho).HasMaxLength(30);
+            entity.Property(e => e.Moradia).HasMaxLength(30);
+            entity.Property(e => e.Escolaridade).HasMaxLength(30);
+            entity.Property(e => e.CadUnico).HasMaxLength(10);
+            entity.Property(e => e.Nis).HasMaxLength(11);
+            entity.Property(e => e.Beneficios).HasMaxLength(200);
+            entity.Property(e => e.BeneficioOutro).HasMaxLength(120);
+            entity.Property(e => e.RedeApoio).HasMaxLength(1000);
+            entity.Property(e => e.Vulnerabilidades).HasMaxLength(200);
+            entity.Property(e => e.Observacoes).HasMaxLength(2000);
+            entity.Property(e => e.ProfissionalUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.ProfissionalIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.ProfissionalNome).IsRequired().HasMaxLength(160);
+
+            entity.HasOne(e => e.Prontuario)
+                .WithMany(p => p.Estudos)
+                .HasForeignKey(e => e.ProntuarioSocialId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<EncaminhamentoRede>(entity =>
+        {
+            entity.ToTable("EncaminhamentosRede");
+            entity.HasIndex(e => e.Data);
+            entity.Property(e => e.Destino).IsRequired().HasMaxLength(30);
+            entity.Property(e => e.DestinoOutro).HasMaxLength(120);
+            entity.Property(e => e.Motivo).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(30);
+            entity.Property(e => e.ObservacaoStatus).HasMaxLength(500);
+            entity.Property(e => e.StatusAtualizadoPorIdentificador).HasMaxLength(80);
+            entity.Property(e => e.ProfissionalUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.ProfissionalIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.ProfissionalNome).IsRequired().HasMaxLength(160);
+
+            entity.HasOne(e => e.Prontuario)
+                .WithMany(p => p.EncaminhamentosRede)
+                .HasForeignKey(e => e.ProntuarioSocialId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<MetaAcompanhamentoSocial>(entity =>
+        {
+            entity.ToTable("MetasAcompanhamentoSocial");
+            entity.Property(m => m.Descricao).IsRequired().HasMaxLength(500);
+            entity.Property(m => m.Situacao).IsRequired().HasMaxLength(20);
+            entity.Property(m => m.CriadaPorUserId).IsRequired().HasMaxLength(450);
+            entity.Property(m => m.CriadaPorIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(m => m.CriadaPorNome).IsRequired().HasMaxLength(160);
+            entity.Property(m => m.AtualizadaPorIdentificador).HasMaxLength(80);
+
+            entity.HasOne(m => m.Prontuario)
+                .WithMany(p => p.Metas)
+                .HasForeignKey(m => m.ProntuarioSocialId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AnexoSocial>(entity =>
+        {
+            entity.ToTable("AnexosSociais");
+            entity.HasIndex(a => a.ProntuarioSocialId);
+            entity.Property(a => a.Tipo).IsRequired().HasMaxLength(30);
+            entity.Property(a => a.Descricao).HasMaxLength(200);
+            entity.Property(a => a.NomeArquivo).IsRequired().HasMaxLength(160);
+            entity.Property(a => a.ContentType).IsRequired().HasMaxLength(40);
+            entity.Property(a => a.Sha256).IsRequired().HasMaxLength(64);
+            entity.Property(a => a.Visibilidade).IsRequired().HasMaxLength(20);
+            entity.Property(a => a.AutorUserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.AutorIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(a => a.AutorNome).IsRequired().HasMaxLength(160);
+            entity.Property(a => a.ExcluidoPorIdentificador).HasMaxLength(80);
+            entity.Property(a => a.MotivoExclusao).HasMaxLength(500);
+
+            entity.HasOne(a => a.Prontuario)
+                .WithMany(p => p.Anexos)
+                .HasForeignKey(a => a.ProntuarioSocialId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(a => a.Atendimento)
+                .WithMany()
+                .HasForeignKey(a => a.AtendimentoSocialId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AnexoSocialConteudo>(entity =>
+        {
+            entity.ToTable("AnexosSociaisConteudos");
+            entity.HasIndex(c => c.AnexoSocialId).IsUnique();
+            entity.Property(c => c.Dados).IsRequired();
+
+            entity.HasOne(c => c.Anexo)
+                .WithOne(a => a.Conteudo)
+                .HasForeignKey<AnexoSocialConteudo>(c => c.AnexoSocialId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ProntuarioSocialAcessoEmergencia>(entity =>
+        {
+            entity.ToTable("ProntuariosSociaisAcessosEmergencia");
+            entity.HasIndex(a => new { a.ProntuarioSocialId, a.UserId });
+            entity.Property(a => a.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.Identificador).IsRequired().HasMaxLength(80);
+            entity.Property(a => a.Nome).IsRequired().HasMaxLength(160);
+            entity.Property(a => a.Motivo).IsRequired().HasMaxLength(500);
+
+            entity.HasOne(a => a.Prontuario)
+                .WithMany()
+                .HasForeignKey(a => a.ProntuarioSocialId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

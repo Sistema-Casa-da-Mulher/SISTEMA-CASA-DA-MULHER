@@ -52,7 +52,7 @@ public class RelatoriosController : ControllerBase
             InicioDados = (await _relatorios.InicioDadosAsync(ct)).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             Hoje = _relatorios.Hoje.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             VisoesDisponiveis = usuario!.Perfil == PerfisAcesso.Equipe
-                ? [PerfisAcesso.Adm, PerfisAcesso.Recepcao, PerfisAcesso.Juridico, PerfisAcesso.Psicologia, PerfisAcesso.Professor]
+                ? [PerfisAcesso.Adm, PerfisAcesso.Recepcao, PerfisAcesso.Juridico, PerfisAcesso.Psicologia, PerfisAcesso.AssistenteSocial, PerfisAcesso.Professor]
                 : []
         };
 
@@ -61,7 +61,7 @@ public class RelatoriosController : ControllerBase
             case PerfisAcesso.Adm:
                 contexto.PerfilNome = "ADM / Coordenação";
                 contexto.TituloArea = "Relatório Estatístico/Geral da Casa";
-                contexto.Intro = "Números da Casa inteira, sem identificar assistidas. No relatório individual a Coordenação vê metadados (datas, situação, protocolo), nunca relatos nem nada da Psicologia por assistida.";
+                contexto.Intro = "Números da Casa inteira, sem identificar assistidas. No relatório individual a Coordenação vê metadados (datas, situação, protocolo), nunca relatos nem nada da Psicologia ou do Serviço Social por assistida.";
                 contexto.VoltarUrl = "painel.html";
                 contexto.VoltarRotulo = "Painel";
                 break;
@@ -93,6 +93,17 @@ public class RelatoriosController : ControllerBase
                 contexto.DocumentoExterno = true;
                 contexto.VoltarUrl = "psicologia.html";
                 contexto.VoltarRotulo = "Psicologia";
+                break;
+            case PerfisAcesso.AssistenteSocial:
+                contexto.PerfilNome = "Serviço Social";
+                contexto.TituloArea = "Relatório Estatístico/Geral do Serviço Social";
+                contexto.Intro = "Atendimentos, rede, benefícios, vulnerabilidades e plano de acompanhamento. Os relatos seguem o sigilo: só a assistente social responsável vê e só ela pode incluí-los no PDF. Documentos anexados nunca entram no PDF.";
+                contexto.FiltroRotulo = "Prontuários";
+                contexto.FiltroOpcoes = [new() { Valor = "todos", Rotulo = "Todos os prontuários" }, new() { Valor = "meus", Rotulo = "Minhas assistidas" }];
+                contexto.RotuloSigiloso = "Incluir relatos (escolher quais)";
+                contexto.DocumentoExterno = true;
+                contexto.VoltarUrl = "assistente-social.html";
+                contexto.VoltarRotulo = "Serviço Social";
                 break;
             case PerfisAcesso.Professor:
                 contexto.PerfilNome = "Professora";
@@ -260,6 +271,8 @@ public class RelatoriosController : ControllerBase
             {
                 mensagem = perfil == PerfisAcesso.Psicologia
                     ? "Só a psicóloga responsável pode emitir documento para outra instituição."
+                    : perfil == PerfisAcesso.AssistenteSocial
+                    ? "Só a assistente social responsável pode emitir documento para outra instituição."
                     : "Só quem pode ver o conteúdo do caso pode emitir documento para outra instituição."
             });
         }

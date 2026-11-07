@@ -106,6 +106,7 @@ public static class AssistidaOrigem
     public const string Recepcao = "recepcao";
     public const string Juridico = "juridico";
     public const string Psicologia = "psicologia";
+    public const string ServicoSocial = "servico_social";
 }
 
 public static class AssistidaContatoSeguro

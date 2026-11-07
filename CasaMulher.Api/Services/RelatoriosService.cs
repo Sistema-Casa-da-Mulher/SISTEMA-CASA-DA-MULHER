@@ -56,7 +56,7 @@ public sealed partial class RelatoriosService
     // ------------------------------------------------------------------ perfil
 
     public static bool PerfilComRelatorio(string perfil) =>
-        perfil is PerfisAcesso.Adm or PerfisAcesso.Recepcao or PerfisAcesso.Juridico or PerfisAcesso.Psicologia or PerfisAcesso.Professor;
+        perfil is PerfisAcesso.Adm or PerfisAcesso.Recepcao or PerfisAcesso.Juridico or PerfisAcesso.Psicologia or PerfisAcesso.Professor or PerfisAcesso.AssistenteSocial;
 
     /// <summary>
     /// Perfil cujo relatório é montado. A equipe de desenvolvimento (EQP) escolhe a visão para testar;
@@ -202,6 +202,8 @@ public sealed partial class RelatoriosService
         public Dictionary<string, Usuario> Usuarios { get; init; } = [];
         public List<CasoJuridicoAcessoEmergencia> EmergenciasJuridico { get; init; } = [];
         public List<ProntuarioPsicologicoAcessoEmergencia> EmergenciasPsicologia { get; init; } = [];
+        public Dictionary<int, ProntuarioSocial> ProntuariosSociais { get; init; } = [];
+        public List<ProntuarioSocialAcessoEmergencia> EmergenciasSocial { get; init; } = [];
         public DateOnly InicioDados { get; init; }
 
         public DateOnly? PrimeiroAtendimentoJuridico(int assistidaId) =>
@@ -209,6 +211,9 @@ public sealed partial class RelatoriosService
 
         public DateOnly? PrimeiraSessao(int assistidaId) =>
             Prontuarios.TryGetValue(assistidaId, out var p) && p.Sessoes.Count > 0 ? Local(p.Sessoes.Min(s => s.CriadoEm)) : null;
+
+        public DateOnly? PrimeiroAtendimentoSocial(int assistidaId) =>
+            ProntuariosSociais.TryGetValue(assistidaId, out var p) && p.Atendimentos.Count > 0 ? Local(p.Atendimentos.Min(a => a.RealizadoEm)) : null;
 
         public string NomeUsuario(string? userId, string padrao = "-") =>
             userId is not null && Usuarios.TryGetValue(userId, out var u) ? u.Nome : padrao;
@@ -253,6 +258,17 @@ public sealed partial class RelatoriosService
             .Include(p => p.Sessoes).ThenInclude(s => s.Adendos)
             .ToListAsync(ct);
 
+        // Anexos entram só como metadados (sem o arquivo): os relatórios nunca carregam documentos.
+        var sociais = await _db.ProntuariosSociais.AsNoTracking()
+            .Include(p => p.Responsaveis)
+            .Include(p => p.Atendimentos).ThenInclude(a => a.Adendos)
+            .Include(p => p.Estudos)
+            .Include(p => p.EncaminhamentosRede)
+            .Include(p => p.Metas)
+            .Include(p => p.Anexos)
+            .AsSplitQuery()
+            .ToListAsync(ct);
+
         var usuarios = await _db.Users.AsNoTracking()
             .Select(u => new Usuario(u.Id, u.NomeCompleto, u.IdentificadorFuncionario, u.Perfil.ToLower(), u.Crp, u.Ativo))
             .ToListAsync(ct);
@@ -275,6 +291,8 @@ public sealed partial class RelatoriosService
             Usuarios = usuarios.ToDictionary(u => u.Id),
             EmergenciasJuridico = await _db.CasosJuridicosAcessosEmergencia.AsNoTracking().ToListAsync(ct),
             EmergenciasPsicologia = await _db.ProntuariosPsicologicosAcessosEmergencia.AsNoTracking().ToListAsync(ct),
+            ProntuariosSociais = sociais.Where(p => porId.ContainsKey(p.AssistidaId)).ToDictionary(p => p.AssistidaId),
+            EmergenciasSocial = await _db.ProntuariosSociaisAcessosEmergencia.AsNoTracking().ToListAsync(ct),
             InicioDados = new DateOnly(inicio.Year, inicio.Month, 1)
         };
     }
@@ -308,6 +326,16 @@ public sealed partial class RelatoriosService
     internal static bool ResponsavelProntuario(ProntuarioPsicologico? p, UsuarioAtuante usuario) =>
         p is not null && p.Responsaveis.Any(r => r.UserId == usuario.UserId);
 
+    internal static bool PodeVerConteudoProntuarioSocial(ProntuarioSocial p, UsuarioAtuante usuario, Dados dados, DateTime agora)
+    {
+        return p.Visibilidade == ProntuarioVisibilidade.Equipe
+            || p.Responsaveis.Any(r => r.UserId == usuario.UserId)
+            || dados.EmergenciasSocial.Any(e => e.ProntuarioSocialId == p.Id && e.UserId == usuario.UserId && e.ExpiraEm > agora);
+    }
+
+    internal static bool ResponsavelProntuarioSocial(ProntuarioSocial? p, UsuarioAtuante usuario) =>
+        p is not null && p.Responsaveis.Any(r => r.UserId == usuario.UserId);
+
     internal List<int> CursosDaProfessora(UsuarioAtuante usuario, Dados dados) =>
         dados.Professoras.Where(p => p.UserId == usuario.UserId).Select(p => p.CursoId).Distinct().ToList();
 
@@ -320,6 +348,7 @@ public sealed partial class RelatoriosService
             PerfisAcesso.Recepcao => dados.Assistidas.Where(a => !a.AcessoRestrito),
             PerfisAcesso.Juridico => dados.Assistidas.Where(a => a.EncaminhadaJuridicoEm is not null || dados.Casos.ContainsKey(a.Id)),
             PerfisAcesso.Psicologia => dados.Assistidas.Where(a => a.EncaminhadaPsicologiaEm is not null || dados.Prontuarios.ContainsKey(a.Id)),
+            PerfisAcesso.AssistenteSocial => dados.Assistidas.Where(a => a.EncaminhadaAssistenciaSocialEm is not null || dados.ProntuariosSociais.ContainsKey(a.Id)),
             PerfisAcesso.Professor => dados.Matriculas
                 .Where(m => !m.Assistida.AcessoRestrito && CursosDaProfessora(usuario, dados).Contains(m.Curso.Id))
                 .Select(m => m.Assistida)
@@ -616,6 +645,8 @@ public sealed partial class RelatoriosService
         AssistidaOrigem.Juridico => perfilViewer == PerfisAcesso.Juridico ? "Cadastro direto no Jurídico" : "Direto no Jurídico",
         AssistidaOrigem.Psicologia => perfilViewer is PerfisAcesso.Psicologia ? "Cadastro direto na Psicologia"
             : perfilViewer == PerfisAcesso.Adm ? "Direto na Psicologia" : "Equipe técnica",
+        AssistidaOrigem.ServicoSocial => perfilViewer is PerfisAcesso.AssistenteSocial ? "Cadastro direto no Serviço Social"
+            : perfilViewer == PerfisAcesso.Adm ? "Direto no Serviço Social" : "Equipe técnica",
         _ => origem
     };
 
@@ -657,6 +688,18 @@ public sealed partial class RelatoriosService
         var primeira = dados.PrimeiraSessao(a.Id);
         return primeira is null || primeira > ate;
     }
+
+    private static bool AguardandoServicoSocial(Assistida a, Dados dados, DateOnly ate)
+    {
+        var enc = Local(a.EncaminhadaAssistenciaSocialEm);
+        if (enc is null || enc > ate) return false;
+        var primeiro = dados.PrimeiroAtendimentoSocial(a.Id);
+        return primeiro is null || primeiro > ate;
+    }
+
+    private static bool ProntuarioSocialAtivoEm(ProntuarioSocial p, DateOnly data) =>
+        p.Atendimentos.Count > 0 && Local(p.Atendimentos.Min(a => a.RealizadoEm)) <= data
+        && (p.EncerradoEm is null || Local(p.EncerradoEm.Value) > data);
 
     private static string? UltimaSituacaoCaso(CasoJuridico caso, DateOnly ate)
     {

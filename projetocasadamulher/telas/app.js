@@ -13,7 +13,7 @@ const PERFIS_LABEL = {
     adm: "Coordenação / ADM",
     recepcao: "Recepção",
     professor: "Professor",
-    as_social: "Assistente Social",
+    as_social: "Serviço Social",
     juridico: "Jurídico",
     psicologia: "Psicologia",
     equipe: "Equipe do projeto"
@@ -783,7 +783,11 @@ async function setupPainel() {
         document.getElementById("linkPsicologia")?.classList.remove("hidden");
     }
 
-    if (usuario.perfil === "juridico" || usuario.perfil === "psicologia") {
+    if (CasaMulherAuth.podeAcessar("social")) {
+        document.getElementById("linkServicoSocial")?.classList.remove("hidden");
+    }
+
+    if (usuario.perfil === "juridico" || usuario.perfil === "psicologia" || usuario.perfil === "as_social") {
         document.getElementById("cardOutrasAreas")?.classList.add("hidden");
     }
 
@@ -1701,6 +1705,7 @@ async function setupFuncionarios() {
         if (r.cursos.length) itens.push(`<li>Cursos: ${escapeHtml(r.cursos.join(", "))} (com alunas, plano de aula e chamada)</li>`);
         if (r.casosJuridicos) itens.push(`<li>${r.casosJuridicos} caso(s) do Jurídico em que é responsável</li>`);
         if (r.prontuariosPsicologicos) itens.push(`<li>${r.prontuariosPsicologicos} prontuário(s) da Psicologia em que é responsável</li>`);
+        if (r.prontuariosSociais) itens.push(`<li>${r.prontuariosSociais} prontuário(s) do Serviço Social em que é responsável (com estudo social, rede, plano e documentos)</li>`);
 
         document.getElementById("transferenciaTitulo").textContent = `Passar responsabilidades de ${r.nome}`;
         document.getElementById("transferenciaResumo").innerHTML = itens.length
@@ -1744,7 +1749,7 @@ async function setupFuncionarios() {
         fecharTransferencia();
         setMessage(
             mensagem,
-            `Responsabilidades passadas: ${r.cursos} curso(s), ${r.casosJuridicos} caso(s) jurídico(s) e ${r.prontuariosPsicologicos} prontuário(s).`
+            `Responsabilidades passadas: ${r.cursos} curso(s), ${r.casosJuridicos} caso(s) jurídico(s), ${r.prontuariosPsicologicos} prontuário(s) da Psicologia e ${r.prontuariosSociais || 0} do Serviço Social.`
                 + (r.contaDesativada ? " A conta de quem saiu foi desativada." : "")
                 + (r.aviso ? ` ${r.aviso}` : ""),
             r.aviso ? "info" : "success");

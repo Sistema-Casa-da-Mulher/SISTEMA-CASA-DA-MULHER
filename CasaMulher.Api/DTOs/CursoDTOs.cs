@@ -116,6 +116,7 @@ public class ResponsabilidadesFuncionarioResponse
     public List<string> Cursos { get; set; } = [];
     public int CasosJuridicos { get; set; }
     public int ProntuariosPsicologicos { get; set; }
+    public int ProntuariosSociais { get; set; }
     public List<ProfessoraCursosResponse> Destinos { get; set; } = [];
 }
 
@@ -130,6 +131,7 @@ public class TransferenciaResultadoResponse
     public int Cursos { get; set; }
     public int CasosJuridicos { get; set; }
     public int ProntuariosPsicologicos { get; set; }
+    public int ProntuariosSociais { get; set; }
     public bool ContaDesativada { get; set; }
     public string? Aviso { get; set; }
 }

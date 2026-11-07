@@ -116,9 +116,12 @@ public class AssistidasController : ControllerBase
         }
 
         AplicarDados(assistida, request, cpf);
-        assistida.Origem = usuario.Perfil == PerfisAcesso.Psicologia
-            ? AssistidaOrigem.Psicologia
-            : AssistidasService.AtuaComoJuridico(usuario.Perfil) ? AssistidaOrigem.Juridico : AssistidaOrigem.Recepcao;
+        assistida.Origem = usuario.Perfil switch
+        {
+            PerfisAcesso.Psicologia => AssistidaOrigem.Psicologia,
+            PerfisAcesso.AssistenteSocial => AssistidaOrigem.ServicoSocial,
+            _ => AssistidasService.AtuaComoJuridico(usuario.Perfil) ? AssistidaOrigem.Juridico : AssistidaOrigem.Recepcao
+        };
         assistida.CadastradaPorUserId = usuario.UserId;
         assistida.CadastradaPorIdentificador = usuario.Identificador;
         assistida.CadastradaPorNome = usuario.Nome;
@@ -134,6 +137,11 @@ public class AssistidasController : ControllerBase
         if (assistida.Origem == AssistidaOrigem.Psicologia)
         {
             assistida.EncaminhadaPsicologiaEm ??= DateTime.UtcNow;
+        }
+
+        if (assistida.Origem == AssistidaOrigem.ServicoSocial)
+        {
+            assistida.EncaminhadaAssistenciaSocialEm ??= DateTime.UtcNow;
         }
 
         var erroCursos = await AplicarCursosAsync(assistida, request.CursoIds, cancellationToken);
@@ -303,6 +311,10 @@ public class AssistidasController : ControllerBase
             case AssistidaOrigem.Psicologia:
                 assistida.EncaminhadaPsicologiaEm ??= DateTime.UtcNow;
                 rotulo = "Psicologia";
+                break;
+            case AssistidaOrigem.ServicoSocial:
+                assistida.EncaminhadaAssistenciaSocialEm ??= DateTime.UtcNow;
+                rotulo = "Serviço Social";
                 break;
             default:
                 return BadRequest(new { mensagem = "Área de encaminhamento inválida." });
@@ -587,6 +599,15 @@ public class AssistidasController : ControllerBase
     internal static AssistidaResponse MapearResposta(Assistida a, string? situacaoJuridico, string perfilViewer)
     {
         var resposta = MapearDados(a, situacaoJuridico);
+
+        // Mesmo cuidado para o Serviço Social: fora dele, quem cadastrou aparece como equipe técnica.
+        if (a.Origem == AssistidaOrigem.ServicoSocial && !AssistidasService.AtuaComoServicoSocial(perfilViewer))
+        {
+            resposta.Origem = "equipe_tecnica";
+            resposta.FuncionarioAtendimentoId = string.Empty;
+            resposta.FuncionarioAtendimentoNomeSnapshot = "Equipe técnica da Casa";
+            resposta.FuncionarioAtendimentoEmailSnapshot = null;
+        }
 
         if (!AssistidasService.AtuaComoPsicologia(perfilViewer))
         {

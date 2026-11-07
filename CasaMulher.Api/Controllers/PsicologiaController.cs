@@ -130,6 +130,10 @@ public class PsicologiaController : ControllerBase
 
         var emJuridico = await _dbContext.CasosJuridicos.AsNoTracking()
             .AnyAsync(c => c.AssistidaId == assistidaId && c.Atendimentos.Any() && c.Situacao != CasoJuridicoSituacao.Encerrado, cancellationToken);
+        var social = await _dbContext.ProntuariosSociais.AsNoTracking()
+            .Where(p => p.AssistidaId == assistidaId && p.Situacao == ProntuarioSituacao.EmAcompanhamento && p.Atendimentos.Any())
+            .Select(p => new { p.VulnerabilidadesAtuais })
+            .FirstOrDefaultAsync(cancellationToken);
 
         var resposta = new ProntuarioPsicologicoDetalheResponse
         {
@@ -153,6 +157,9 @@ public class PsicologiaController : ControllerBase
             RiscoElevado = PsicologiaCatalogo.RiscoElevado(prontuario?.RiscoAtual),
             ConsentimentoRegistrado = prontuario?.ConsentimentoSigiloEm is not null,
             EmAtendimentoJuridico = emJuridico,
+            EmAcompanhamentoServicoSocial = social is not null,
+            AlertaVulnerabilidadeSocial = social is not null && !string.IsNullOrWhiteSpace(social.VulnerabilidadesAtuais),
+            EncaminhadaServicoSocial = assistida.EncaminhadaAssistenciaSocialEm is not null,
             TotalSessoes = sessoes.Count,
             TotalFaltas = acesso.PodeVerConteudo ? sessoes.Count(s => s.Presenca is "faltou" or "faltou_justificou") : 0,
             FaltasSeguidas = acesso.PodeVerConteudo ? sessoes.TakeWhile(s => s.Presenca is "faltou" or "faltou_justificou").Count() : 0,

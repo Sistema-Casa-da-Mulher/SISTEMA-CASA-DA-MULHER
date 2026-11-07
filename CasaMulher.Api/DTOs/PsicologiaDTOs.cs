@@ -86,6 +86,11 @@ public class ProntuarioPsicologicoDetalheResponse
     public bool RiscoElevado { get; set; }
     public bool ConsentimentoRegistrado { get; set; }
     public bool EmAtendimentoJuridico { get; set; }
+
+    /// <summary>Só o fato de estar em acompanhamento no Serviço Social e o aviso de vulnerabilidade, sem detalhes.</summary>
+    public bool EmAcompanhamentoServicoSocial { get; set; }
+    public bool AlertaVulnerabilidadeSocial { get; set; }
+    public bool EncaminhadaServicoSocial { get; set; }
     public int TotalSessoes { get; set; }
     public int TotalFaltas { get; set; }
     public int FaltasSeguidas { get; set; }

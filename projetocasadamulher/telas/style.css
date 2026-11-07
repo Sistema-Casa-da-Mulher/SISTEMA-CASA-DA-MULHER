@@ -3501,6 +3501,42 @@ textarea.soft-input {
     border-color: #B9D3E2;
 }
 
+/* Serviço Social */
+.painel-action-card--social {
+    background: linear-gradient(135deg, #E8F3EC 0%, #D2E8DA 100%);
+    border: 1px solid #BBDAC6;
+}
+
+.painel-action-card--social:hover {
+    background: linear-gradient(135deg, #F1F8F3 0%, #DFEFE5 100%);
+    border-color: #BBDAC6;
+}
+
+.painel-action-card--social .painel-action-card-title {
+    color: #3B6B4C;
+}
+
+.painel-action-card--social .painel-action-card-subtitle {
+    color: #5B856A;
+}
+
+.soft-badge--social {
+    background: #E8F3EC;
+    color: #3B6B4C;
+    border-color: #BBDAC6;
+}
+
+.soft-alert--vulnerabilidade {
+    background: #FFF6E5;
+    color: #7A5310;
+    border-color: #F1D29A;
+}
+
+.soft-alert--vulnerabilidade ul {
+    margin: 8px 0 0 18px;
+    padding: 0;
+}
+
 .soft-badge--risco {
     background: #FDE8E8;
     color: #A23B3B;

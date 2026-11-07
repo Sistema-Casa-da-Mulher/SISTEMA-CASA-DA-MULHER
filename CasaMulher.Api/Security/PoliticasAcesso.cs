@@ -8,6 +8,7 @@ public static class PoliticasAcesso
     public const string AcessoProntuarioSocial = "AcessoProntuarioSocial";
     public const string AcessoJuridico = "AcessoJuridico";
     public const string AcessoPsicologia = "AcessoPsicologia";
+    public const string AnexosEquipeTecnica = "AnexosEquipeTecnica";
     public const string AcessoRelatorios = "AcessoRelatorios";
     public const string CadastroAssistidas = "CadastroAssistidas";
     public const string AcessoEquipe = "AcessoEquipe";

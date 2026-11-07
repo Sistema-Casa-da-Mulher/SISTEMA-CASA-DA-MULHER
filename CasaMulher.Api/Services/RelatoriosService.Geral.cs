@@ -30,6 +30,7 @@ public sealed partial class RelatoriosService
             PerfisAcesso.Juridico => GeralJuridico(dados, p, ant, usuario, filtro == "meus", agora),
             PerfisAcesso.Psicologia => GeralPsicologia(dados, p, ant, usuario, filtro == "meus", agora),
             PerfisAcesso.Professor => GeralProfessora(dados, p, ant, usuario, filtro),
+            PerfisAcesso.AssistenteSocial => GeralServicoSocial(dados, p, ant, usuario, filtro == "meus", agora),
             _ => throw new InvalidOperationException("Perfil sem relatório.")
         };
 
@@ -45,7 +46,7 @@ public sealed partial class RelatoriosService
 
     // ================================================================== ADM / Coordenação
 
-    private sealed record IndicadoresCasa(int Novas, int Atendidas, int Jur, int Psi, int Aulas, int Freq, int FreqTotal, int Fila);
+    private sealed record IndicadoresCasa(int Novas, int Atendidas, int Jur, int Psi, int Soc, int Aulas, int Freq, int FreqTotal, int Fila);
 
     private static IndicadoresCasa IndicadoresAdm(Dados d, PeriodoRelatorio p)
     {
@@ -55,6 +56,8 @@ public sealed partial class RelatoriosService
         var sess = d.Prontuarios.Values.SelectMany(pr => pr.Sessoes.Select(s => (pr.AssistidaId, s))).Where(x => p.Dentro(Local(x.s.CriadoEm))).ToList();
         atendidas.UnionWith(ats.Select(x => x.AssistidaId));
         atendidas.UnionWith(sess.Where(x => x.s.Presenca == "compareceu").Select(x => x.AssistidaId));
+        var soc = d.ProntuariosSociais.Values.SelectMany(pr => pr.Atendimentos.Select(a => (pr.AssistidaId, a))).Where(x => p.Dentro(Local(x.a.RealizadoEm))).ToList();
+        atendidas.UnionWith(soc.Select(x => x.AssistidaId));
         var f = Freq(regs);
 
         return new IndicadoresCasa(
@@ -62,10 +65,11 @@ public sealed partial class RelatoriosService
             atendidas.Count,
             ats.Count,
             sess.Count,
+            soc.Count,
             regs.Select(r => (r.CursoId, r.Data)).Distinct().Count(),
             f.Pct,
             f.Total,
-            d.Assistidas.Count(a => AguardandoJuridico(a, d, p.Fim) || AguardandoPsicologia(a, d, p.Fim)));
+            d.Assistidas.Count(a => AguardandoJuridico(a, d, p.Fim) || AguardandoPsicologia(a, d, p.Fim) || AguardandoServicoSocial(a, d, p.Fim)));
     }
 
     private sealed record ProcuraCurso(Curso Curso, string Professoras, int Procura, int Ativas, int Concluiram, int Interrompidas, int Vinculadas, Frequencia Freq, int Aulas);
@@ -119,13 +123,7 @@ public sealed partial class RelatoriosService
         [
             Montar("juridico", "Jurídico", a => a.EncaminhadaJuridicoEm, a => d.PrimeiroAtendimentoJuridico(a.Id), a => AguardandoJuridico(a, d, p.Fim)),
             Montar("psicologia", "Psicologia", a => a.EncaminhadaPsicologiaEm, a => d.PrimeiraSessao(a.Id), a => AguardandoPsicologia(a, d, p.Fim)),
-            new LinhaEncaminhamento(
-                "assistente_social",
-                "Assistência social",
-                lista.Count(a => p.Dentro(Local(a.EncaminhadaAssistenciaSocialEm))),
-                0,
-                lista.Count(a => Local(a.EncaminhadaAssistenciaSocialEm) is { } e && e <= p.Fim),
-                0, 0, null, 0, 0)
+            Montar("assistente_social", "Serviço Social", a => a.EncaminhadaAssistenciaSocialEm, a => d.PrimeiroAtendimentoSocial(a.Id), a => AguardandoServicoSocial(a, d, p.Fim))
         ];
     }
 
@@ -141,18 +139,19 @@ public sealed partial class RelatoriosService
         r.Kpis =
         [
             KpiN(I.Novas, "Novas assistidas", A?.Novas),
-            Kpi(N(I.Atendidas), "Assistidas atendidas", null, I.Atendidas, A?.Atendidas, titulo: "Tiveram presença em aula, atendimento jurídico ou sessão de psicologia com comparecimento"),
+            Kpi(N(I.Atendidas), "Assistidas atendidas", null, I.Atendidas, A?.Atendidas, titulo: "Tiveram presença em aula, atendimento jurídico, sessão de psicologia com comparecimento ou atendimento do Serviço Social"),
             KpiN(I.Jur, "Atendimentos jurídicos", A?.Jur),
             KpiN(I.Psi, "Sessões de psicologia", A?.Psi),
+            KpiN(I.Soc, "Atendimentos do Serviço Social", A?.Soc),
             KpiN(I.Aulas, "Aulas com chamada", A?.Aulas),
             Kpi(I.FreqTotal > 0 ? I.Freq + "%" : "-", "Frequência média nos cursos", I.FreqTotal > 0 ? null : "Sem chamada no período", I.Freq, A is { FreqTotal: > 0 } && I.FreqTotal > 0 ? A.Freq : null, " p.p."),
-            Kpi(N(I.Fila), "Aguardando 1º atendimento", "Jurídico e Psicologia, no fim do período"),
+            Kpi(N(I.Fila), "Aguardando 1º atendimento", "Jurídico, Psicologia e Serviço Social, no fim do período"),
             Kpi(N(d.Assistidas.Count(a => a.AcessoRestrito && Local(a.CriadoEm) <= p.Fim)), "Casos com acesso restrito", "Total na Casa")
         ];
 
         // ---- pontos de atenção (até 5, sem nomes e sem conteúdo)
         var pontos = new List<RelatorioPontoDto>();
-        var filaAcima = encs.Where(e => e.Chave != "assistente_social" && e.AcimaPrazo > 0).OrderByDescending(e => e.MaisAntiga).ToList();
+        var filaAcima = encs.Where(e => e.AcimaPrazo > 0).OrderByDescending(e => e.MaisAntiga).ToList();
         if (filaAcima.Count > 0)
         {
             pontos.Add(new RelatorioPontoDto
@@ -215,18 +214,13 @@ public sealed partial class RelatoriosService
             });
         }
 
-        var social = encs.First(e => e.Chave == "assistente_social");
         r.Avisos.Add(new RelatorioAvisoDto
         {
             Tipo = "info",
             Titulo = "Pontos de atenção do período",
             Texto = pontos.Count == 0 ? "Nenhum alerta identificado pelos critérios configurados." : null,
             Pontos = pontos.Take(5).ToList(),
-            Nota = string.Join(" ", new[]
-            {
-                social.Aguardando > 0 ? $"Assistência social: {social.Aguardando} encaminhamento(s) sem confirmação de atendimento no sistema. Não entra nos destaques porque ausência de registro não prova ausência de atendimento." : null,
-                semVagas > 0 ? $"{semVagas} curso(s) ativo(s) sem vagas cadastradas na tela Cursos: a ocupação deles aparece como \"sem registro\"." : null
-            }.Where(x => x is not null))
+            Nota = semVagas > 0 ? $"{semVagas} curso(s) ativo(s) sem vagas cadastradas na tela Cursos: a ocupação deles aparece como \"sem registro\"." : string.Empty
         });
 
         // ---- procura
@@ -239,7 +233,7 @@ public sealed partial class RelatoriosService
         {
             Tipo = "podio",
             Titulo = "O que as assistidas mais e menos procuraram",
-            Nota = "Cursos e encaminhamentos escolhidos no direcionamento (Recepção, Jurídico ou Psicologia) dentro do período. Uma assistida pode escolher mais de um.",
+            Nota = "Cursos e encaminhamentos escolhidos no direcionamento (Recepção, Jurídico, Psicologia ou Serviço Social) dentro do período. Uma assistida pode escolher mais de um.",
             Largo = true,
             Itens = tudo.Select(x => Item(x.Rotulo, x.Valor, x.Tipo == "Curso" ? "barra" : "roxo", x.Valor > 0 ? Pct(x.Valor, totalNovas) + "%" : null)).Select((i, k) => { i.Tipo = tudo[k].Tipo; return i; }).ToList(),
             Legenda = [Item("Curso", 0, "barra"), Item("Encaminhamento", 0, "roxo"), Item("% = em relação às novas assistidas do período", 0)]
@@ -268,11 +262,8 @@ public sealed partial class RelatoriosService
             Nota = "Aguardando = encaminhadas que ainda não tiveram o primeiro atendimento no fim do período (cancelados pelo Jurídico saem da fila).",
             Largo = true,
             Colunas = [Col("Área"), Col("Encaminhadas", true), Col("1º atendimento no período", true), Col("Aguardando", true), Col("Sem agendamento", true), Col("Cancelados", true), Col("Espera média", true), Col("Espera mais longa", true)],
-            Linhas = encs.Select(e => e.Chave == "assistente_social"
-                ? Linha(C(e.Nome), C(e.Encaminhadas), C("sem registro"), C($"{e.Aguardando} sem confirmação"), C("-"), C("-"), C("-"), C("-"))
-                : Linha(C(e.Nome), C(e.Encaminhadas), C(e.Atendidas), C(e.Aguardando), C(e.Chave == "juridico" ? N(e.SemAgendamento) : "-"), C(e.Chave == "juridico" ? N(e.Cancelados) : "-"),
-                    C(e.EsperaMedia is null ? "-" : e.EsperaMedia + " dias"), C(e.MaisAntiga > 0 ? e.MaisAntiga + " dias" : "-"))).ToList(),
-            Extras = [Texto("", null, "Assistência social: encaminhamentos sem confirmação de atendimento no sistema. O perfil ainda não existe, então a falta de registro não prova que a assistida não foi atendida. Por isso não entra na espera nem no total aguardando.", "sigilo")]
+            Linhas = encs.Select(e => Linha(C(e.Nome), C(e.Encaminhadas), C(e.Atendidas), C(e.Aguardando), C(e.Chave == "juridico" ? N(e.SemAgendamento) : "-"), C(e.Chave == "juridico" ? N(e.Cancelados) : "-"),
+                C(e.EsperaMedia is null ? "-" : e.EsperaMedia + " dias"), C(e.MaisAntiga > 0 ? e.MaisAntiga + " dias" : "-"))).ToList()
         });
 
         var combos = Contar(novas, a =>
@@ -282,7 +273,7 @@ public sealed partial class RelatoriosService
             if (a.Cursos.Any(c => Local(c.CriadoEm) == entrada)) partes.Add("Curso");
             if (Local(a.EncaminhadaJuridicoEm) == entrada) partes.Add("Jurídico");
             if (Local(a.EncaminhadaPsicologiaEm) == entrada) partes.Add("Psicologia");
-            if (Local(a.EncaminhadaAssistenciaSocialEm) == entrada) partes.Add("Assistência social");
+            if (Local(a.EncaminhadaAssistenciaSocialEm) == entrada) partes.Add("Serviço Social");
             return partes.Count == 0 ? "Sem direcionamento na entrada" : string.Join(" + ", partes);
         });
         secao.Blocos.Add(Barras("Combinações mais comuns na chegada", "O que cada nova assistida escolheu já no primeiro direcionamento.", combos.Take(8)));
@@ -297,6 +288,7 @@ public sealed partial class RelatoriosService
                 Colunas("Novas assistidas por mês", NotaMes(p), PorMes(p, d.Assistidas.Select(a => Local(a.CriadoEm)))),
                 Colunas("Atendimentos jurídicos por mês", NotaMes(p), PorMes(p, d.Casos.Values.SelectMany(c => c.Atendimentos).Select(a => Local(a.CriadoEm))), "roxo"),
                 Colunas("Sessões de psicologia por mês", NotaMes(p), PorMes(p, d.Prontuarios.Values.SelectMany(x => x.Sessoes).Select(s => Local(s.CriadoEm))), "azul"),
+                Colunas("Atendimentos do Serviço Social por mês", NotaMes(p), PorMes(p, d.ProntuariosSociais.Values.SelectMany(x => x.Atendimentos).Select(a => Local(a.RealizadoEm))), "roxo"),
                 Colunas("Presenças em aula por mês", NotaMes(p), PorMes(p, d.Registros.Where(x => x.Status == "presente").Select(x => x.Data)), "ok")
             ]
         });
@@ -307,6 +299,7 @@ public sealed partial class RelatoriosService
         foreach (var x in d.Registros.Where(x => x.Status == "presente" && p.Dentro(x.Data))) Marca(x.AssistidaId, "curso");
         foreach (var c in d.Casos.Values) if (c.Atendimentos.Any(a => p.Dentro(Local(a.CriadoEm)))) Marca(c.AssistidaId, "jur");
         foreach (var pr in d.Prontuarios.Values) if (pr.Sessoes.Any(s => s.Presenca == "compareceu" && p.Dentro(Local(s.CriadoEm)))) Marca(pr.AssistidaId, "psi");
+        foreach (var ps in d.ProntuariosSociais.Values) if (ps.Atendimentos.Any(a => p.Dentro(Local(a.RealizadoEm)))) Marca(ps.AssistidaId, "soc");
         var qtd = areas.Values.Select(s => s.Count).ToList();
         var comEndereco = novas.Where(a => !a.EnderecoSigiloso).ToList();
 
@@ -322,8 +315,8 @@ public sealed partial class RelatoriosService
                     Extras = [Barras("", null, Contar(comEndereco, a => a.Bairro?.Trim()).Take(8))]
                 },
                 BlocoContato("Contato e segurança", "Como a Casa pode falar com elas.", novas),
-                Barras("Em quantas frentes cada uma é atendida", $"Assistidas com presença em curso, atendimento jurídico ou sessão no período ({qtd.Count}). Frentes: cursos, Jurídico e Psicologia.",
-                    new[] { 1, 2, 3 }.Select(k => Item(k == 1 ? "1 frente" : $"{k} frentes", qtd.Count(x => x == k))))
+                Barras("Em quantas frentes cada uma é atendida", $"Assistidas com presença em curso, atendimento jurídico, sessão ou atendimento social no período ({qtd.Count}). Frentes: cursos, Jurídico, Psicologia e Serviço Social.",
+                    new[] { 1, 2, 3, 4 }.Select(k => Item(k == 1 ? "1 frente" : $"{k} frentes", qtd.Count(x => x == k))))
             ]
         });
 
@@ -374,6 +367,9 @@ public sealed partial class RelatoriosService
             ]
         });
 
+        // ---- Serviço Social em números (sem nomes, sem relatos, sem documentos)
+        r.Secoes.Add(SecaoAdmServicoSocial(d, p));
+
         // ---- cursos: frequência e interrupções
         var regsP = d.Registros.Where(x => p.Dentro(x.Data)).ToList();
         r.Secoes.Add(new RelatorioSecaoDto
@@ -406,6 +402,7 @@ public sealed partial class RelatoriosService
             [PerfisAcesso.Recepcao] = ("Recepção", "cadastros"),
             [PerfisAcesso.Juridico] = ("Jurídico", "atendimentos"),
             [PerfisAcesso.Psicologia] = ("Psicologia", "sessões"),
+            [PerfisAcesso.AssistenteSocial] = ("Serviço Social", "atendimentos"),
             [PerfisAcesso.Professor] = ("Professora", "chamadas lançadas")
         };
         var linhasEquipe = d.Usuarios.Values
@@ -417,6 +414,7 @@ public sealed partial class RelatoriosService
                     PerfisAcesso.Recepcao => d.Assistidas.Count(a => a.CadastradaPorUserId == u.Id && p.Dentro(Local(a.CriadoEm))),
                     PerfisAcesso.Juridico => atsP.Count(a => a.ProfissionalUserId == u.Id),
                     PerfisAcesso.Psicologia => sP.Count(s => s.ProfissionalUserId == u.Id),
+                    PerfisAcesso.AssistenteSocial => d.ProntuariosSociais.Values.SelectMany(x => x.Atendimentos).Count(a => a.ProfissionalUserId == u.Id && p.Dentro(Local(a.RealizadoEm))),
                     _ => d.Chamadas.Count(c => c.RegistradaPorUserId == u.Id && p.Dentro(c.Data))
                 };
                 return (u, total);
@@ -441,6 +439,8 @@ public sealed partial class RelatoriosService
                         Linha(C("Casos com acesso restrito (total)"), C(restritas.Count)),
                         Linha(C("Acessos de emergência no Jurídico"), C(d.EmergenciasJuridico.Count(e => p.Dentro(Local(e.CriadoEm))))),
                         Linha(C("Acessos de emergência na Psicologia"), C(d.EmergenciasPsicologia.Count(e => p.Dentro(Local(e.CriadoEm))))),
+                        Linha(C("Acessos de emergência no Serviço Social"), C(d.EmergenciasSocial.Count(e => p.Dentro(Local(e.CriadoEm))))),
+                        Linha(C("Documentos anexados no Serviço Social"), C(d.ProntuariosSociais.Values.SelectMany(x => x.Anexos).Count(a => p.Dentro(Local(a.CriadoEm))))),
                         Linha(C("Termos de sigilo assinados"), C(termos)),
                         Linha(C("Responsabilidades passadas"), C(transferencias)),
                         Linha(C("Relatórios impressos"), C(relatoriosImpressos)),
@@ -511,12 +511,12 @@ public sealed partial class RelatoriosService
         r.Kpis =
         [
             KpiN(A.Count, "Acolhimentos novos", ant is null ? null : Acolh(ant).Count),
-            KpiN(Encs(p), "Encaminhamentos feitos", ant is null ? null : Encs(ant), "Jurídico e Assistência social"),
+            KpiN(Encs(p), "Encaminhamentos feitos", ant is null ? null : Encs(ant), "Jurídico e Serviço Social"),
             KpiN(direc.Count, "Direcionamentos para cursos"),
             KpiN(atualizacoes.Count, "Fichas atualizadas"),
             Kpi(N(visiveis.Count(a => a.Origem != AssistidaOrigem.Recepcao && p.Dentro(Local(a.CriadoEm)))), "Cadastradas direto por outra área", "Já chegam com ficha pronta"),
             Kpi(N(encJur.Count(a => AguardandoJuridico(a, d, p.Fim))), "Jurídico: sem 1º atendimento", "Aguardando ou agendado, no fim do período"),
-            Kpi(N(visiveis.Count(a => Local(a.EncaminhadaAssistenciaSocialEm) is { } e && e <= p.Fim)), "Assistência social sem confirmação no sistema", "O perfil ainda não existe")
+            Kpi(N(visiveis.Count(a => p.Dentro(Local(a.EncaminhadaAssistenciaSocialEm)))), "Encaminhadas ao Serviço Social", "O acompanhamento fica só com o Serviço Social")
         ];
 
         var ordemSit = new[] { "Aguardando atendimento", "Agendado", "Primeiro atendimento realizado", "Cancelado" };
@@ -559,7 +559,7 @@ public sealed partial class RelatoriosService
                 Barras("Encaminhamentos feitos pela Recepção", "Opções do card de direcionamento no período.",
                 [
                     Item("Jurídico", visiveis.Count(a => a.Origem == AssistidaOrigem.Recepcao && p.Dentro(Local(a.EncaminhadaJuridicoEm)))),
-                    Item("Assistência social", visiveis.Count(a => a.Origem == AssistidaOrigem.Recepcao && p.Dentro(Local(a.EncaminhadaAssistenciaSocialEm))))
+                    Item("Serviço Social", visiveis.Count(a => a.Origem == AssistidaOrigem.Recepcao && p.Dentro(Local(a.EncaminhadaAssistenciaSocialEm))))
                 ]),
                 Barras("Cursos mais e menos escolhidos", "Do mais procurado ao menos procurado no período.", cursosEscolhidos, true),
                 calor,
@@ -575,7 +575,7 @@ public sealed partial class RelatoriosService
                         var entrada = Local(a.CriadoEm);
                         var encsA = new List<string>();
                         if (Local(a.EncaminhadaJuridicoEm) == entrada) encsA.Add("Jurídico");
-                        if (Local(a.EncaminhadaAssistenciaSocialEm) == entrada) encsA.Add("Assistência social");
+                        if (Local(a.EncaminhadaAssistenciaSocialEm) == entrada) encsA.Add("Serviço Social");
                         var cursos = d.Matriculas.Where(m => m.Assistida.Id == a.Id).Select(m => m.Curso.Nome).ToList();
                         return Linha(C(Fd(entrada)), C(a.Nome), C(Idade(a.DataNascimento, entrada)?.ToString(CultureInfo.InvariantCulture) ?? "-"),
                             C(cursos.Count == 0 ? "-" : string.Join(", ", cursos)), C(encsA.Count == 0 ? "-" : string.Join(", ", encsA)), C(a.CadastradaPorNome));

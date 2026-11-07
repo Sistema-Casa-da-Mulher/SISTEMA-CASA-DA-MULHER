@@ -144,6 +144,14 @@ public class JuridicoController : ControllerBase
             resposta.AcompanhamentoPsicologico = psicologico is not null;
             resposta.AlertaRiscoPsicologico = psicologico is not null && PsicologiaCatalogo.RiscoElevado(psicologico.RiscoAtual);
             resposta.EncaminhadaPsicologia = assistida.EncaminhadaPsicologiaEm is not null;
+
+            var social = await _dbContext.ProntuariosSociais.AsNoTracking()
+                .Where(p => p.AssistidaId == assistidaId && p.Situacao == ProntuarioSituacao.EmAcompanhamento && p.Atendimentos.Any())
+                .Select(p => new { p.VulnerabilidadesAtuais })
+                .FirstOrDefaultAsync(cancellationToken);
+            resposta.AcompanhamentoServicoSocial = social is not null;
+            resposta.AlertaVulnerabilidadeSocial = social is not null && !string.IsNullOrWhiteSpace(social.VulnerabilidadesAtuais);
+            resposta.EncaminhadaServicoSocial = assistida.EncaminhadaAssistenciaSocialEm is not null;
             resposta.EncaminhadaJuridicoEm = assistida.EncaminhadaJuridicoEm;
             resposta.AgendadoPara = assistida.JuridicoAgendadoPara;
             resposta.EncaminhamentoCanceladoEm = assistida.JuridicoEncaminhamentoCanceladoEm;

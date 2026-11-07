@@ -82,15 +82,21 @@ public sealed class AssistidasService
         return perfil is PerfisAcesso.Psicologia or PerfisAcesso.Equipe;
     }
 
+    /// <summary>Perfis que trabalham como Serviço Social (EQP só chega aqui em dev/homologação).</summary>
+    public static bool AtuaComoServicoSocial(string perfil)
+    {
+        return perfil is PerfisAcesso.AssistenteSocial or PerfisAcesso.Equipe;
+    }
+
     /// <summary>Quem enxerga assistidas com acesso restrito.</summary>
     public static bool PodeVerRestritas(string perfil)
     {
-        return perfil is PerfisAcesso.Adm or PerfisAcesso.Juridico or PerfisAcesso.Psicologia or PerfisAcesso.Equipe;
+        return perfil is PerfisAcesso.Adm or PerfisAcesso.Juridico or PerfisAcesso.Psicologia or PerfisAcesso.AssistenteSocial or PerfisAcesso.Equipe;
     }
 
     public static bool PodeAlterarRestricao(string perfil)
     {
-        return perfil is PerfisAcesso.Adm or PerfisAcesso.Juridico or PerfisAcesso.Psicologia or PerfisAcesso.Equipe;
+        return perfil is PerfisAcesso.Adm or PerfisAcesso.Juridico or PerfisAcesso.Psicologia or PerfisAcesso.AssistenteSocial or PerfisAcesso.Equipe;
     }
 
     public static bool PodeRemover(string perfil)

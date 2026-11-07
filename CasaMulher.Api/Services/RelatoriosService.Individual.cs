@@ -41,8 +41,13 @@ public sealed partial class RelatoriosService
         var ehAdm = perfil == PerfisAcesso.Adm;
         var ehRec = perfil == PerfisAcesso.Recepcao;
         var ehProf = perfil == PerfisAcesso.Professor;
+        var ehSoc = perfil == PerfisAcesso.AssistenteSocial;
         var podeVerCaso = ehJur && caso is not null && PodeVerConteudoCaso(caso, usuario, d, agora);
         var podeVerPront = ehPsi && pront is not null && PodeVerConteudoProntuario(pront, usuario, d, agora);
+        var prontSoc = d.ProntuariosSociais.GetValueOrDefault(a.Id);
+        var socAtivo = prontSoc is not null && prontSoc.Situacao == ProntuarioSituacao.EmAcompanhamento && prontSoc.Atendimentos.Count > 0;
+        var vulneravel = socAtivo && !string.IsNullOrWhiteSpace(prontSoc!.VulnerabilidadesAtuais);
+        var podeVerSoc = ehSoc && prontSoc is not null && PodeVerConteudoProntuarioSocial(prontSoc, usuario, d, agora);
 
         var r = new RelatorioIndividualResponse
         {
@@ -58,7 +63,11 @@ public sealed partial class RelatoriosService
         if (a.AcessoRestrito && !ehRec && !ehProf) r.Badges.Add(Badge("Acesso restrito", "restrito"));
         if (ehPsi && pront is not null) r.Badges.Add(Badge("Prontuário " + pront.Numero, "psicologia"));
         if ((ehPsi || ehJur) && riscoGrave) r.Badges.Add(Badge("Risco " + RotuloRisco(pront!.RiscoAtual).ToLower(PtBr), "risco"));
-        if (ehJur && prontAtivo) r.Badges.Add(Badge("Em acompanhamento na Psicologia", "psicologia"));
+        if ((ehJur || ehSoc) && prontAtivo) r.Badges.Add(Badge("Em acompanhamento na Psicologia", "psicologia"));
+        if (ehSoc && prontSoc is not null) r.Badges.Add(Badge("Prontuário " + prontSoc.Numero, "juridico"));
+        if ((ehJur || ehPsi) && socAtivo) r.Badges.Add(Badge("Em acompanhamento no Serviço Social", "juridico"));
+        if ((ehJur || ehPsi || ehSoc) && vulneravel) r.Badges.Add(Badge("Aviso de vulnerabilidade social", "risco"));
+        if (ehSoc && caso is not null && caso.Atendimentos.Count > 0 && caso.Situacao != CasoJuridicoSituacao.Encerrado) r.Badges.Add(Badge("Em acompanhamento no Jurídico", "juridico"));
         if (ehPsi && caso is not null && caso.Atendimentos.Count > 0 && caso.Situacao != CasoJuridicoSituacao.Encerrado) r.Badges.Add(Badge("Em acompanhamento no Jurídico", "juridico"));
         if (ehJur && caso is not null && caso.Atendimentos.Count > 0) r.Badges.Add(Badge("Caso " + RotulosSituacaoCaso.GetValueOrDefault(caso.Situacao, caso.Situacao).ToLower(PtBr), "juridico"));
         var cursando = mats.Count(m => m.Situacao == AssistidaCursoSituacao.Cursando);
@@ -67,9 +76,9 @@ public sealed partial class RelatoriosService
         var contato = ContatoTexto(a);
         var tempo = Dias(entrada, hoje);
         var tempoTxt = tempo > 60 ? $"{Math.Floor(tempo / 30.4)} meses" : $"{tempo} dias";
-        var cadastradaPor = a.Origem == AssistidaOrigem.Psicologia && !ehPsi
+        var cadastradaPor = (a.Origem == AssistidaOrigem.Psicologia && !ehPsi) || (a.Origem == AssistidaOrigem.ServicoSocial && !ehSoc)
             ? "Equipe técnica da Casa"
-            : $"{a.CadastradaPorNome} ({a.Origem switch { AssistidaOrigem.Juridico => "Jurídico", AssistidaOrigem.Psicologia => "Psicologia", _ => "Recepção" }})";
+            : $"{a.CadastradaPorNome} ({a.Origem switch { AssistidaOrigem.Juridico => "Jurídico", AssistidaOrigem.Psicologia => "Psicologia", AssistidaOrigem.ServicoSocial => "Serviço Social", _ => "Recepção" }})";
 
         r.Ficha = ehProf
             ?
@@ -89,9 +98,9 @@ public sealed partial class RelatoriosService
                 new RelatorioParDto { Rotulo = "Cadastrada por", Valor = cadastradaPor }
             ];
 
-        if (a.AcessoRestrito && (ehAdm || ehJur || ehPsi))
+        if (a.AcessoRestrito && (ehAdm || ehJur || ehPsi || ehSoc))
         {
-            var motivo = ehAdm ? "motivo visível só para Jurídico e Psicologia" : a.MotivoRestricao switch
+            var motivo = ehAdm ? "motivo visível só para Jurídico, Psicologia e Serviço Social" : a.MotivoRestricao switch
             {
                 AssistidaMotivoRestricao.SegredoJustica => "segredo de justiça",
                 AssistidaMotivoRestricao.CasaAbrigo => "casa-abrigo",
@@ -115,6 +124,18 @@ public sealed partial class RelatoriosService
                     "Sofrimento intenso: CAPS de referência e CVV 188 (24 horas, gratuito).",
                     "Violência em curso: Polícia 190, Delegacia da Mulher e Jurídico da Casa."
                 ]
+            });
+        }
+
+        if (vulneravel && (ehSoc || ehJur || ehPsi))
+        {
+            r.Avisos.Add(new RelatorioAvisoDto
+            {
+                Tipo = "risco",
+                Titulo = "Aviso de vulnerabilidade social registrado pelo Serviço Social.",
+                Texto = ehSoc
+                    ? "Indicadores do estudo social vigente: " + string.Join(", ", Separar(prontSoc!.VulnerabilidadesAtuais, RotulosVulnerabilidade)) + "."
+                    : "Só o aviso, sem detalhes. Converse com o Serviço Social da Casa se precisar."
             });
         }
 
@@ -159,20 +180,34 @@ public sealed partial class RelatoriosService
             r.Kpis.Add(Kpi(RotuloRisco(pront?.RiscoAtual), "Risco atual", alerta: riscoGrave));
         }
 
+        var atsSocAll = prontSoc?.Atendimentos.OrderBy(x => x.RealizadoEm).ToList() ?? [];
+        var atsSocP = atsSocAll.Where(x => p.Dentro(Local(x.RealizadoEm))).ToList();
+        if (ehSoc)
+        {
+            r.Kpis.Add(Kpi(N(atsSocP.Count), "Atendimentos no período", $"{atsSocAll.Count} desde a abertura"));
+            if (podeVerSoc)
+            {
+                var plano = PlanoAte(prontSoc!.Metas, p.Fim);
+                r.Kpis.Add(Kpi(N(prontSoc.EncaminhamentosRede.Count(e => p.Dentro(e.Data))), "Encaminhamentos à rede no período"));
+                r.Kpis.Add(Kpi(plano.Total > 0 ? Pct(plano.Concluidas, plano.Total) + "%" : "-", "Plano concluído", $"{plano.Concluidas} de {plano.Total} metas"));
+            }
+        }
+
         var encsVisiveis = new List<(string Area, DateOnly Data)>();
         if (a.EncaminhadaJuridicoEm is not null) encsVisiveis.Add(("Jurídico", Local(a.EncaminhadaJuridicoEm.Value)));
-        if (a.EncaminhadaAssistenciaSocialEm is not null) encsVisiveis.Add(("Assistência social", Local(a.EncaminhadaAssistenciaSocialEm.Value)));
-        if (ehRec) r.Kpis.Add(Kpi(N(encsVisiveis.Count), "Encaminhamentos feitos", "Jurídico e Assistência social"));
+        if (a.EncaminhadaAssistenciaSocialEm is not null) encsVisiveis.Add(("Serviço Social", Local(a.EncaminhadaAssistenciaSocialEm.Value)));
+        if (ehRec) r.Kpis.Add(Kpi(N(encsVisiveis.Count), "Encaminhamentos feitos", "Jurídico e Serviço Social"));
         if (ehAdm) r.Kpis.Add(Kpi(N(encsVisiveis.Count), "Encaminhamentos", (encsVisiveis.Count == 0 ? "Nenhum" : string.Join(", ", encsVisiveis.Select(e => e.Area))) + " (Psicologia não aparece por sigilo)"));
 
         // ---- trajetória
-        var marcos = Marcos(a, perfil, d, mats, caso, pront, podeVerCaso, podeVerPront).Where(m => p.Dentro(DateOnly.ParseExact(m.Data, "yyyy-MM-dd", CultureInfo.InvariantCulture))).ToList();
+        var marcos = Marcos(a, perfil, d, mats, caso, pront, podeVerCaso, podeVerPront, prontSoc, podeVerSoc).Where(m => p.Dentro(DateOnly.ParseExact(m.Data, "yyyy-MM-dd", CultureInfo.InvariantCulture))).ToList();
         var notaTempo = perfil switch
         {
             PerfisAcesso.Recepcao => "Entrada, direcionamentos, encaminhamentos e cursos. A Recepção não vê nada da Psicologia nem o conteúdo do Jurídico.",
             PerfisAcesso.Juridico => "Inclui o que o Jurídico pode ver das outras áreas: cursos (nome, situação e datas) e, da Psicologia, só o alerta de risco atual.",
             PerfisAcesso.Psicologia => "Da área jurídica aparece só se ela está em acompanhamento, sem conteúdo.",
             PerfisAcesso.Professor => "Só os cursos que você dá. Nada das outras áreas aparece para a professora.",
+            PerfisAcesso.AssistenteSocial => "Do Jurídico e da Psicologia aparece só se ela está em acompanhamento, sem conteúdo.",
             _ => "A Coordenação vê metadados (datas, situação, protocolo), nunca relatos nem nada da Psicologia por assistida."
         };
         r.Secoes.Add(new RelatorioSecaoDto { Blocos = [new RelatorioBlocoDto { Tipo = "marcos", Titulo = "Trajetória no período", Nota = notaTempo, Largo = true, Marcos = marcos, Vazio = "Nenhum marco neste período." }] });
@@ -190,13 +225,13 @@ public sealed partial class RelatoriosService
                 atsP.Select(x => Linha(C(x.Protocolo), C(Fd(Local(x.CriadoEm))), C(x.ProfissionalNome), C(RotulosSituacaoCaso.GetValueOrDefault(x.Situacao, x.Situacao)))), true,
                 atsAll.Count > 0 ? "Nenhum atendimento jurídico no período." : "Sem atendimento jurídico."));
             hist.Blocos.Add(Texto("Psicologia", null, "Pela regra de sigilo da Psicologia, a Coordenação não vê se uma assistida específica é atendida, nem as sessões. Os números da Psicologia aparecem só no Relatório Estatístico/Geral, sem nomes.", "sigilo"));
-            hist.Blocos.Add(Texto("Assistência social", null, a.EncaminhadaAssistenciaSocialEm is null
-                ? "Sem encaminhamento."
-                : $"Encaminhada em {Fd(Local(a.EncaminhadaAssistenciaSocialEm.Value))}. Sem confirmação de atendimento no sistema (o perfil ainda não existe, então o atendimento pode ter acontecido sem registro)."));
+            hist.Blocos.Add(Texto("Serviço Social", null, (a.EncaminhadaAssistenciaSocialEm is null ? "Sem encaminhamento ao Serviço Social. " : $"Encaminhada ao Serviço Social em {Fd(Local(a.EncaminhadaAssistenciaSocialEm.Value))}. ")
+                + "Pela regra de sigilo, a Coordenação não vê o acompanhamento social por assistida (atendimentos, estudo social, rede e documentos). Os números do Serviço Social aparecem só no Relatório Estatístico/Geral, sem nomes.", "sigilo"));
         }
 
         if (ehPsi) hist.Blocos.AddRange(await HistoricoPsicologiaAsync(pront, sessP, usuario, podeVerPront, r, p, ct));
-        if (ehJur || ehPsi) hist.Blocos.Add(CursosResumo(mats, p, perfil, d));
+        if (ehSoc) hist.Blocos.AddRange(HistoricoServicoSocial(prontSoc, atsSocP, usuario, podeVerSoc, p, hoje));
+        if (ehJur || ehPsi || ehSoc) hist.Blocos.Add(CursosResumo(mats, p, perfil, d));
         r.Secoes.Add(hist);
 
         // ---- conteúdo sigiloso e documento externo
@@ -226,6 +261,19 @@ public sealed partial class RelatoriosService
             r.PodeDocumentoExterno = resp && sessAll.Count > 0;
         }
 
+        if (ehSoc)
+        {
+            r.TipoSigiloso = "relatos";
+            var resp = ResponsavelProntuarioSocial(prontSoc, usuario);
+            r.PodeIncluirSigiloso = resp && atsSocP.Count > 0;
+            r.RegistrosSigilosos = resp ? atsSocP.Select(x => new RelatorioRegistroSigilosoDto { Chave = PrefixoServicoSocial + x.Id, Rotulo = $"atendimento nº {x.Numero}" }).ToList() : [];
+            r.AvisoSigiloso = prontSoc is null || atsSocAll.Count == 0 ? "Ainda não há atendimentos para incluir."
+                : !podeVerSoc ? "Marcar “Incluir relatos” não libera acesso: este PDF sai sem nenhum relato."
+                : !resp ? $"Só a assistente social responsável ({NomesResponsaveis(prontSoc.Responsaveis.Select(x => x.Nome))}) pode incluir relatos num PDF. Marcar a opção não dá permissão."
+                : atsSocP.Count == 0 ? "Nenhum atendimento no período escolhido." : null;
+            r.PodeDocumentoExterno = resp && atsSocAll.Count > 0;
+        }
+
         return r;
     }
 
@@ -252,7 +300,7 @@ public sealed partial class RelatoriosService
         return texto.Length == 0 ? "Sem registro" : texto;
     }
 
-    private static List<RelatorioMarcoDto> Marcos(Assistida a, string perfil, Dados d, List<Matricula> mats, CasoJuridico? caso, ProntuarioPsicologico? pront, bool podeVerCaso, bool podeVerPront)
+    private static List<RelatorioMarcoDto> Marcos(Assistida a, string perfil, Dados d, List<Matricula> mats, CasoJuridico? caso, ProntuarioPsicologico? pront, bool podeVerCaso, bool podeVerPront, ProntuarioSocial? prontSoc, bool podeVerSoc)
     {
         var ev = new List<RelatorioMarcoDto>();
         void Add(DateOnly data, string area, string texto, string? quem = null) => ev.Add(new RelatorioMarcoDto { Data = Iso(data), Area = area, Texto = texto, Quem = quem });
@@ -260,11 +308,13 @@ public sealed partial class RelatoriosService
 
         if (!ehProf)
         {
-            var quem = a.Origem == AssistidaOrigem.Psicologia && perfil != PerfisAcesso.Psicologia ? "Equipe técnica da Casa" : a.CadastradaPorNome;
+            var quem = (a.Origem == AssistidaOrigem.Psicologia && perfil != PerfisAcesso.Psicologia) || (a.Origem == AssistidaOrigem.ServicoSocial && perfil != PerfisAcesso.AssistenteSocial)
+                ? "Equipe técnica da Casa"
+                : a.CadastradaPorNome;
             Add(Local(a.CriadoEm), "", "Cadastro na Casa", quem);
             if (a.EncaminhadaJuridicoEm is not null) Add(Local(a.EncaminhadaJuridicoEm.Value), "juridico", "Encaminhada ao Jurídico");
-            if (a.EncaminhadaAssistenciaSocialEm is not null) Add(Local(a.EncaminhadaAssistenciaSocialEm.Value), "social", "Encaminhada à Assistência social");
-            if (a.EncaminhadaPsicologiaEm is not null && perfil is PerfisAcesso.Psicologia or PerfisAcesso.Juridico)
+            if (a.EncaminhadaAssistenciaSocialEm is not null) Add(Local(a.EncaminhadaAssistenciaSocialEm.Value), "social", "Encaminhada ao Serviço Social");
+            if (a.EncaminhadaPsicologiaEm is not null && perfil is PerfisAcesso.Psicologia or PerfisAcesso.Juridico or PerfisAcesso.AssistenteSocial)
                 Add(Local(a.EncaminhadaPsicologiaEm.Value), "psicologia", "Encaminhada à Psicologia");
         }
 
@@ -306,7 +356,31 @@ public sealed partial class RelatoriosService
             }
         }
 
-        if (caso is not null && caso.Atendimentos.Count > 0 && perfil == PerfisAcesso.Psicologia)
+        if (prontSoc is not null && prontSoc.Atendimentos.Count > 0 && perfil is PerfisAcesso.Juridico or PerfisAcesso.Psicologia)
+        {
+            Add(Local(prontSoc.Atendimentos.Min(x => x.RealizadoEm)), "social", "Iniciou acompanhamento no Serviço Social");
+        }
+
+        if (prontSoc is not null && perfil == PerfisAcesso.AssistenteSocial)
+        {
+            var ats = prontSoc.Atendimentos.OrderBy(x => x.RealizadoEm).ToList();
+            var resp = prontSoc.Responsaveis.OrderBy(x => x.AtribuidoEm).FirstOrDefault();
+            if (ats.Count > 0) Add(Local(ats[0].RealizadoEm), "social", $"Primeiro atendimento no Serviço Social ({prontSoc.Numero})", resp?.Nome);
+            if (podeVerSoc)
+            {
+                foreach (var e in prontSoc.Estudos.OrderBy(x => x.Versao))
+                    Add(Local(e.CriadoEm), "social", e.Versao == 1 ? "Estudo social preenchido" : $"Estudo social atualizado (versão {e.Versao})", e.ProfissionalNome);
+                foreach (var e in prontSoc.EncaminhamentosRede.OrderBy(x => x.Data))
+                    Add(e.Data, "social", $"Encaminhada à rede: {RotuloDestino(e)} ({RotulosStatusRede.GetValueOrDefault(e.Status, e.Status).ToLower(PtBr)})", e.ProfissionalNome);
+                foreach (var m in prontSoc.Metas.Where(x => x.ConcluidaEm is not null))
+                    Add(Local(m.ConcluidaEm!.Value), "social", "Meta concluída: " + m.Descricao);
+            }
+
+            if (prontSoc.EncerradoEm is not null)
+                Add(Local(prontSoc.EncerradoEm.Value), "social", podeVerSoc ? "Acompanhamento encerrado: " + RotulosEncerramentoSocial.GetValueOrDefault(prontSoc.MotivoEncerramento ?? "", "Outro") : "Acompanhamento encerrado");
+        }
+
+        if (caso is not null && caso.Atendimentos.Count > 0 && perfil is PerfisAcesso.Psicologia or PerfisAcesso.AssistenteSocial)
         {
             Add(Local(caso.Atendimentos.Min(x => x.CriadoEm)), "juridico", "Iniciou acompanhamento no Jurídico");
         }
@@ -647,6 +721,11 @@ public sealed partial class RelatoriosService
             return resultado;
         }
 
+        if (perfil == PerfisAcesso.AssistenteSocial)
+        {
+            return await ConteudoSigilosoSocialAsync(u, assistidaId, lista, ct);
+        }
+
         if (perfil == PerfisAcesso.Psicologia)
         {
             var pront = await _db.ProntuariosPsicologicos.AsNoTracking()
@@ -679,7 +758,7 @@ public sealed partial class RelatoriosService
 
     public async Task<DocumentoExternoResponse?> DocumentoExternoAsync(UsuarioAtuante u, string perfil, int assistidaId, string? tipo, string? referencia, CancellationToken ct)
     {
-        if (perfil is not (PerfisAcesso.Juridico or PerfisAcesso.Psicologia)) return null;
+        if (perfil is not (PerfisAcesso.Juridico or PerfisAcesso.Psicologia or PerfisAcesso.AssistenteSocial)) return null;
         var d = await CarregarAsync(ct);
         if (!d.PorId.TryGetValue(assistidaId, out var a)) return null;
         var p = DesdeEntrada(ResolverPeriodo(tipo, referencia, d.InicioDados), Local(a.CriadoEm), "a entrada na Casa");
@@ -702,6 +781,16 @@ public sealed partial class RelatoriosService
             resp.Quantidade = caso.Atendimentos.Count(x => p.Dentro(Local(x.CriadoEm)));
             resp.RotuloQuantidade = "atendimento(s) jurídico(s)";
             resp.Situacao = caso.Situacao == CasoJuridicoSituacao.Encerrado ? "foi acompanhada pelo Jurídico da Casa" : "está em acompanhamento no Jurídico da Casa";
+            return resp;
+        }
+
+        if (perfil == PerfisAcesso.AssistenteSocial)
+        {
+            if (!d.ProntuariosSociais.TryGetValue(a.Id, out var social) || social.Atendimentos.Count == 0 || !ResponsavelProntuarioSocial(social, u)) return null;
+            resp.Area = "Serviço Social";
+            resp.Quantidade = social.Atendimentos.Count(x => p.Dentro(Local(x.RealizadoEm)));
+            resp.RotuloQuantidade = "atendimento(s) do Serviço Social";
+            resp.Situacao = social.Situacao == ProntuarioSituacao.Encerrado ? "foi acompanhada pelo Serviço Social da Casa" : "está em acompanhamento no Serviço Social da Casa";
             return resp;
         }
 

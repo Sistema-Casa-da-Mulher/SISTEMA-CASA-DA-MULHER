@@ -8,7 +8,7 @@ namespace CasaMulher.Api.Controllers;
 
 /// <summary>
 /// Passar responsabilidades: quando uma profissional sai da Casa, o ADM transfere para outra
-/// do mesmo perfil os cursos (professora), os casos (Jurídico) e os prontuários (Psicologia).
+/// do mesmo perfil os cursos (professora), os casos (Jurídico) e os prontuários (Psicologia e Serviço Social).
 /// Os registros já feitos continuam assinados por quem fez; a conta nova é sempre outra.
 /// </summary>
 public partial class FuncionariosController
@@ -41,6 +41,7 @@ public partial class FuncionariosController
             Cursos = cursos,
             CasosJuridicos = await _dbContext.CasosJuridicosResponsaveis.CountAsync(r => r.UserId == id),
             ProntuariosPsicologicos = await _dbContext.ProntuariosPsicologicosResponsaveis.CountAsync(r => r.UserId == id),
+            ProntuariosSociais = await _dbContext.ProntuariosSociaisResponsaveis.CountAsync(r => r.UserId == id),
             Destinos = destinos
         });
     }
@@ -130,6 +131,24 @@ public partial class FuncionariosController
             responsavel.AtribuidoEm = agora;
         }
 
+        // Serviço Social: responsável pelos prontuários sociais (anexos e plano pertencem ao prontuário e seguem junto).
+        var sociaisDestino = await _dbContext.ProntuariosSociaisResponsaveis.Where(r => r.UserId == destino.Id).Select(r => r.ProntuarioSocialId).ToListAsync();
+        var sociaisOrigem = await _dbContext.ProntuariosSociaisResponsaveis.Where(r => r.UserId == origem.Id).ToListAsync();
+        foreach (var responsavel in sociaisOrigem)
+        {
+            if (sociaisDestino.Contains(responsavel.ProntuarioSocialId))
+            {
+                _dbContext.ProntuariosSociaisResponsaveis.Remove(responsavel);
+                continue;
+            }
+
+            responsavel.UserId = destino.Id;
+            responsavel.Identificador = destino.IdentificadorFuncionario;
+            responsavel.Nome = destino.NomeCompleto;
+            responsavel.AtribuidoPorIdentificador = adm;
+            responsavel.AtribuidoEm = agora;
+        }
+
         await _dbContext.SaveChangesAsync();
 
         if (request.DesativarConta && origem.Ativo)
@@ -148,7 +167,7 @@ public partial class FuncionariosController
             "RESPONSABILIDADES_TRANSFERIDAS",
             "ApplicationUser",
             origem.Id,
-            $"Transferiu de {origem.IdentificadorFuncionario} para {destino.IdentificadorFuncionario}: {cursosOrigem.Count} curso(s), {casosOrigem.Count} caso(s) jurídico(s), {prontuariosOrigem.Count} prontuário(s).");
+            $"Transferiu de {origem.IdentificadorFuncionario} para {destino.IdentificadorFuncionario}: {cursosOrigem.Count} curso(s), {casosOrigem.Count} caso(s) jurídico(s), {prontuariosOrigem.Count} prontuário(s) da Psicologia, {sociaisOrigem.Count} prontuário(s) do Serviço Social.");
 
         if (request.DesativarConta)
         {
@@ -166,6 +185,7 @@ public partial class FuncionariosController
             Cursos = cursosOrigem.Count,
             CasosJuridicos = casosOrigem.Count,
             ProntuariosPsicologicos = prontuariosOrigem.Count,
+            ProntuariosSociais = sociaisOrigem.Count,
             ContaDesativada = request.DesativarConta,
             Aviso = snapshot.AvisoSnapshot
         });
