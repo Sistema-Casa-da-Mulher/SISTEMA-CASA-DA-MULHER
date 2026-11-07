@@ -124,6 +124,11 @@
         }
 
         @media print {
+            /* Só o comprovante vai para o papel: o resto sai do fluxo para não gerar páginas em branco. */
+            body > *:not(#comprovanteImpressao) {
+                display: none !important;
+            }
+
             body * {
                 visibility: hidden !important;
             }

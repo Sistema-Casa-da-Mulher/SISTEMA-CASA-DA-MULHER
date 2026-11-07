@@ -38,6 +38,8 @@
         #previaConteudo iframe { width: 100%; height: 70vh; border: 0; }
         #comprovanteImpressao { display: none; }
         @media print {
+            /* Só a declaração vai para o papel: o resto sai do fluxo para não gerar páginas em branco. */
+            body > *:not(#comprovanteImpressao) { display: none !important; }
             body * { visibility: hidden !important; }
             #comprovanteImpressao, #comprovanteImpressao * { visibility: visible !important; }
             #comprovanteImpressao { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 24px; font-family: Arial, sans-serif; color: #000; }
