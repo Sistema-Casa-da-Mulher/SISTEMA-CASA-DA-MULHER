@@ -132,6 +132,7 @@ public class TransferenciaResultadoResponse
     public int CasosJuridicos { get; set; }
     public int ProntuariosPsicologicos { get; set; }
     public int ProntuariosSociais { get; set; }
+    public int AgendamentosParaRevisar { get; set; }
     public bool ContaDesativada { get; set; }
     public string? Aviso { get; set; }
 }

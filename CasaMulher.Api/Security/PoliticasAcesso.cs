@@ -4,6 +4,7 @@ public static class PoliticasAcesso
 {
     public const string SomenteAdm = "SomenteAdm";
     public const string AcessoRecepcao = "AcessoRecepcao";
+    public const string AcessoAgenda = "AcessoAgenda";
     public const string AcessoCursos = "AcessoCursos";
     public const string AcessoProntuarioSocial = "AcessoProntuarioSocial";
     public const string AcessoJuridico = "AcessoJuridico";

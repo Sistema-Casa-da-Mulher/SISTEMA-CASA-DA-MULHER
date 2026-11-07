@@ -93,6 +93,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<ChamadaRegistro> ChamadasRegistros => Set<ChamadaRegistro>();
 
+    public DbSet<AgendaAgendamento> AgendaAgendamentos => Set<AgendaAgendamento>();
+
+    public DbSet<AgendaAgendamentoHistorico> AgendaAgendamentosHistorico => Set<AgendaAgendamentoHistorico>();
+
+    public DbSet<AgendaCompromisso> AgendaCompromissos => Set<AgendaCompromisso>();
+
+    public DbSet<AgendaCompromissoPessoa> AgendaCompromissosPessoas => Set<AgendaCompromissoPessoa>();
+
+    public DbSet<AgendaDiaEspecial> AgendaDiasEspeciais => Set<AgendaDiaEspecial>();
+
+    public DbSet<CursoHorario> CursosHorarios => Set<CursoHorario>();
+
+    public DbSet<AulaCancelamento> AulasCancelamentos => Set<AulaCancelamento>();
+
+    public DbSet<AgendaRevisao> AgendaRevisoes => Set<AgendaRevisao>();
+
+    public DbSet<ReavaliacaoRiscoPsicologica> ReavaliacoesRiscoPsicologicas => Set<ReavaliacaoRiscoPsicologica>();
+
+    public DbSet<AgendaConfiguracao> AgendaConfiguracoes => Set<AgendaConfiguracao>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -626,6 +646,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(r => r.Chamada).WithMany(c => c.Registros).HasForeignKey(r => r.ChamadaId).OnDelete(DeleteBehavior.Cascade);
         });
 
+        ConfigurarAgenda(builder);
+
         builder.Entity<ProntuarioPsicologico>(entity =>
         {
             entity.ToTable("ProntuariosPsicologicos");
@@ -928,5 +950,124 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 }
             }
         }
+    }
+
+    private static void ConfigurarAgenda(ModelBuilder builder)
+    {
+        builder.Entity<AgendaAgendamento>(entity =>
+        {
+            entity.ToTable("AgendaAgendamentos");
+            entity.HasIndex(a => new { a.ResponsavelUserId, a.InicioUtc });
+            entity.HasIndex(a => new { a.AssistidaId, a.InicioUtc });
+            entity.Property(a => a.Area).IsRequired().HasMaxLength(30);
+            entity.Property(a => a.Tipo).IsRequired().HasMaxLength(40);
+            entity.Property(a => a.ResponsavelUserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.Situacao).IsRequired().HasMaxLength(30);
+            entity.Property(a => a.Observacao).HasMaxLength(300);
+            entity.Property(a => a.ChegadaEstado).HasMaxLength(20);
+            entity.Property(a => a.ChegadaMarcadaPorIdentificador).HasMaxLength(80);
+            entity.Property(a => a.Justificativa).HasMaxLength(300);
+            entity.Property(a => a.ExcecaoMotivo).HasMaxLength(300);
+            entity.Property(a => a.ExcecaoPorIdentificador).HasMaxLength(80);
+            entity.Property(a => a.CriadoPorUserId).IsRequired().HasMaxLength(450);
+            entity.Property(a => a.CriadoPorIdentificador).IsRequired().HasMaxLength(80);
+            entity.HasOne(a => a.Assistida).WithMany().HasForeignKey(a => a.AssistidaId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AgendaAgendamentoHistorico>(entity =>
+        {
+            entity.ToTable("AgendaAgendamentosHistorico");
+            entity.Property(h => h.Texto).IsRequired().HasMaxLength(400);
+            entity.Property(h => h.PorIdentificador).IsRequired().HasMaxLength(80);
+            entity.HasOne(h => h.Agendamento).WithMany(a => a.Historico).HasForeignKey(h => h.AgendaAgendamentoId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<AgendaCompromisso>(entity =>
+        {
+            entity.ToTable("AgendaCompromissos");
+            entity.HasIndex(c => new { c.DonoUserId, c.InicioUtc });
+            entity.HasIndex(c => c.InicioUtc);
+            entity.Property(c => c.Tipo).IsRequired().HasMaxLength(30);
+            entity.Property(c => c.Titulo).IsRequired().HasMaxLength(160);
+            entity.Property(c => c.DonoUserId).IsRequired().HasMaxLength(450);
+            entity.Property(c => c.RegistradoPorUserId).IsRequired().HasMaxLength(450);
+            entity.Property(c => c.Local).HasMaxLength(160);
+            entity.Property(c => c.OrigemArea).HasMaxLength(30);
+            entity.Property(c => c.Visibilidade).IsRequired().HasMaxLength(20);
+            entity.Property(c => c.SituacaoAusencia).HasMaxLength(20);
+            entity.Property(c => c.AusenciaConfirmadaPorIdentificador).HasMaxLength(80);
+            entity.Property(c => c.Situacao).IsRequired().HasMaxLength(20);
+            entity.Property(c => c.SerieId).HasMaxLength(40);
+            entity.Property(c => c.Justificativa).HasMaxLength(300);
+            entity.Property(c => c.ExcecaoMotivo).HasMaxLength(300);
+            entity.Property(c => c.ExcecaoPorIdentificador).HasMaxLength(80);
+            entity.Property(c => c.Comunicacao).HasMaxLength(20);
+        });
+
+        builder.Entity<AgendaCompromissoPessoa>(entity =>
+        {
+            entity.ToTable("AgendaCompromissosPessoas");
+            entity.HasIndex(p => new { p.AgendaCompromissoId, p.UserId }).IsUnique();
+            entity.HasIndex(p => p.UserId);
+            entity.Property(p => p.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(p => p.Papel).IsRequired().HasMaxLength(20);
+            entity.HasOne(p => p.Compromisso).WithMany(c => c.Pessoas).HasForeignKey(p => p.AgendaCompromissoId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<AgendaDiaEspecial>(entity =>
+        {
+            entity.ToTable("AgendaDiasEspeciais");
+            entity.HasIndex(d => d.Data);
+            entity.Property(d => d.Tipo).IsRequired().HasMaxLength(20);
+            entity.Property(d => d.Titulo).IsRequired().HasMaxLength(160);
+            entity.Property(d => d.Nota).HasMaxLength(300);
+            entity.Property(d => d.ReabertaMotivo).HasMaxLength(300);
+            entity.Property(d => d.ReabertaPorIdentificador).HasMaxLength(80);
+            entity.Property(d => d.CriadoPorIdentificador).IsRequired().HasMaxLength(80);
+        });
+
+        builder.Entity<CursoHorario>(entity =>
+        {
+            entity.ToTable("CursosHorarios");
+            entity.HasIndex(h => h.CursoId);
+            entity.Property(h => h.Sala).HasMaxLength(80);
+            entity.HasOne(h => h.Curso).WithMany().HasForeignKey(h => h.CursoId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<AulaCancelamento>(entity =>
+        {
+            entity.ToTable("AulasCancelamentos");
+            entity.HasIndex(c => new { c.CursoId, c.Data });
+            entity.Property(c => c.Escopo).IsRequired().HasMaxLength(20);
+            entity.Property(c => c.Motivo).IsRequired().HasMaxLength(160);
+            entity.Property(c => c.PorIdentificador).IsRequired().HasMaxLength(80);
+        });
+
+        builder.Entity<AgendaRevisao>(entity =>
+        {
+            entity.ToTable("AgendaRevisoes");
+            entity.HasIndex(r => new { r.ParaUserId, r.Situacao });
+            entity.Property(r => r.DeUserId).IsRequired().HasMaxLength(450);
+            entity.Property(r => r.ParaUserId).IsRequired().HasMaxLength(450);
+            entity.Property(r => r.Situacao).IsRequired().HasMaxLength(20);
+            entity.HasOne(r => r.Agendamento).WithMany().HasForeignKey(r => r.AgendaAgendamentoId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ReavaliacaoRiscoPsicologica>(entity =>
+        {
+            entity.ToTable("ReavaliacoesRiscoPsicologicas");
+            entity.HasIndex(r => r.ProntuarioPsicologicoId);
+            entity.Property(r => r.Classificacao).IsRequired().HasMaxLength(20);
+            entity.Property(r => r.ProximaAcao).IsRequired().HasMaxLength(1000);
+            entity.Property(r => r.ProfissionalUserId).IsRequired().HasMaxLength(450);
+            entity.Property(r => r.ProfissionalIdentificador).IsRequired().HasMaxLength(80);
+            entity.Property(r => r.ProfissionalNome).IsRequired().HasMaxLength(160);
+            entity.HasOne(r => r.Prontuario).WithMany().HasForeignKey(r => r.ProntuarioPsicologicoId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AgendaConfiguracao>(entity =>
+        {
+            entity.ToTable("AgendaConfiguracoes");
+        });
     }
 }

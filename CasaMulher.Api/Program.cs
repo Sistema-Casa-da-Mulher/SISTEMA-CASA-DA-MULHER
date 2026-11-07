@@ -189,6 +189,11 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole(rolesRelatorios)
             .AddRequirements(new ContextoAcessoEfetivoRequirement()));
 
+    // Agenda: todos os perfis da Casa (o que cada uma vê é decidido item a item no AgendaService).
+    options.AddPolicy(PoliticasAcesso.AcessoAgenda, policy =>
+        policy.RequireRole(rolesRelatorios)
+            .AddRequirements(new ContextoAcessoEfetivoRequirement()));
+
     options.AddPolicy(PoliticasAcesso.CadastroAssistidas, policy =>
         policy.RequireRole(rolesCadastroAssistidas)
             .AddRequirements(new ContextoAcessoEfetivoRequirement()));
@@ -298,6 +303,7 @@ builder.Services.AddScoped<HmlDbSnapshotService>();
 builder.Services.AddScoped<AssistidasService>();
 builder.Services.AddScoped<CursosService>();
 builder.Services.AddScoped<RelatoriosService>();
+builder.Services.AddScoped<AgendaService>();
 builder.Services.AddScoped<ServicoSocialAcessoService>();
 builder.Services.AddSingleton<AnexosSociaisArquivos>();
 builder.Services.AddScoped<SecuritySnapshotPersistenceService>();

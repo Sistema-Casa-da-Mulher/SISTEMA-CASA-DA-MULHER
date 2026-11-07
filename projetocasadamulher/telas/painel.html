@@ -8,6 +8,8 @@
     <script src="config.js" defer></script>
     <script src="auth.js?v=4" defer></script>
     <script src="app.js?v=18" defer></script>
+    <link rel="stylesheet" href="agenda.css?v=1">
+    <script src="agenda.js?v=1" defer></script>
 </head>
 <body class="soft-page">
     <main style="max-width: 1400px; margin: 0 auto; padding: 24px 20px;">
@@ -62,6 +64,9 @@
                     </dl>
                 </div>
             </div>
+
+            <!-- Agenda: Hoje, Próximos 7 dias e Pendências (agenda.js) -->
+            <div id="cardAgenda" class="soft-card ag-card-agenda hidden" aria-live="polite"></div>
 
             <!-- Card 2: Áreas disponíveis -->
             <div class="soft-card">

@@ -150,6 +150,18 @@ public partial class FuncionariosController
             responsavel.AtribuidoEm = agora;
         }
 
+        // Agenda: agendamentos futuros NÃO entram sozinhos na agenda da sucessora; ela recebe uma lista
+        // para revisar e assumir (com conferência de disponibilidade) ou remarcar.
+        var futuros = await _dbContext.AgendaAgendamentos
+            .Where(a => a.ResponsavelUserId == origem.Id && a.Situacao == AgendaSituacao.Agendado && a.InicioUtc > agora)
+            .Select(a => a.Id).ToListAsync();
+        var jaPendentes = await _dbContext.AgendaRevisoes
+            .Where(r => futuros.Contains(r.AgendaAgendamentoId) && r.Situacao == "pendente").Select(r => r.AgendaAgendamentoId).ToListAsync();
+        foreach (var agendamentoId in futuros.Except(jaPendentes))
+        {
+            _dbContext.AgendaRevisoes.Add(new AgendaRevisao { AgendaAgendamentoId = agendamentoId, DeUserId = origem.Id, ParaUserId = destino.Id, CriadoEm = agora });
+        }
+
         await _dbContext.SaveChangesAsync();
 
         if (request.DesativarConta && origem.Ativo)
@@ -168,7 +180,7 @@ public partial class FuncionariosController
             "RESPONSABILIDADES_TRANSFERIDAS",
             "ApplicationUser",
             origem.Id,
-            $"Transferiu de {origem.IdentificadorFuncionario} para {destino.IdentificadorFuncionario}: {cursosOrigem.Count} curso(s), {casosOrigem.Count} caso(s) jurídico(s), {prontuariosOrigem.Count} prontuário(s) da Psicologia, {sociaisOrigem.Count} prontuário(s) do Serviço Social.");
+            $"Transferiu de {origem.IdentificadorFuncionario} para {destino.IdentificadorFuncionario}: {cursosOrigem.Count} curso(s), {casosOrigem.Count} caso(s) jurídico(s), {prontuariosOrigem.Count} prontuário(s) da Psicologia, {sociaisOrigem.Count} prontuário(s) do Serviço Social, {futuros.Count} agendamento(s) futuro(s) para revisar.");
 
         if (request.DesativarConta)
         {
@@ -187,6 +199,7 @@ public partial class FuncionariosController
             CasosJuridicos = casosOrigem.Count,
             ProntuariosPsicologicos = prontuariosOrigem.Count,
             ProntuariosSociais = sociaisOrigem.Count,
+            AgendamentosParaRevisar = futuros.Count,
             ContaDesativada = request.DesativarConta,
             Aviso = snapshot.AvisoSnapshot
         });
